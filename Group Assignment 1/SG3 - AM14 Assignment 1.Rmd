@@ -1,0 +1,212 @@
+---
+title: "AM14 Assignment 1"
+subtitle:  "Prices, Returns, and Portfolio Theory"
+author: "Study Group 3: Alberto Lambert, Sammy Chen, Shuhan Li, Michael Gritzbach, Mehek Khanna"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Importing Packages
+
+```{r load_libraries}
+
+library(readxl)
+
+```
+
+> 1. Go to CANVAS and download the data for PS1 Monthly.xlsx. The data was downloaded from the
+CRSP (The Center for Research in Security Prices) data base via WRDS (Wharton Research Service)
+that is available for LBS students. Note the file contains data about Microsoft, Exxon Mobil (previously
+Exxon), General Electric, JP Morgan Chase (previously Chemical Banking and Chase Manhattan),
+Intel, Citigroup (previously Primerica and Travellers Group). In addition, the columns vwretd (ewretd)
+and vwredx (ewretx) contain value-weighted (equal-weighted) total returns and total returns excluding
+dividends for the CRSP index that contains stocks from NYSE, AMEX, and NASDAQ. Finally, sprtrn
+contains the total return for the S&P 500 Composite Index.
+
+# Loading in the Data
+
+```{r loading_data}
+
+#Loading in PS1 monthly data
+PS1_Monthly <- read_excel("PS1_Monthly.xlsx")
+
+#Loading in PS1 daily data
+PS1_Daily <- read_excel("PS1_Daily.xlsx")
+
+```
+
+> 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted)
+prices (PRC), dividends (DVAMT) and adjustment for the number of shares (CFACPR, i.e., the
+adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find
+more information about the variables on the CRSP page online. Calculate returns where you omit the
+dividends, i.e., you focus solely on capital gains (call these returns RETX).
+
+```{r}
+
+
+
+```
+
+> 3. Use the holding period returns to create a total return index for the MSFT and GE stocks and the S&P
+500 index, which shows the theoretical growth in value of an investment in the stock assuming that
+dividends are reinvested (normalize the start value to 1). Do the same for the returns that abstract
+from dividend payments (i.e., use RETX instead). Plot the investments with and without dividends
+for each stock separately. How do dividends affect the results stock by stock?
+
+```{r}
+
+
+
+```
+
+> 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the
+unadjusted prices. Discuss.
+
+```{r}
+
+
+```
+
+> 5.  The holding period returns are normal returns. Generate a new variable that contains the corresponding
+log returns (LRET). Calculate the mean, variance, skewness, and kurtosis of the normal and the log
+returns. Plot the normal against the log returns for MSFT. Briefly discuss your results!
+
+```{r}
+
+
+
+```
+
+> 6. Go to CANVAS and download the data for PS1 Daily.xlsx. This file contains two worksheets.
+HPR Daily contains the daily holding period returns for the six stocks, the S&P 500 Composite Index
+and the value-weighted market portfolio (including dividends) from CRSP. Prices Daily contains the
+prices for the six stocks and the S&P 500 Composite Index.
+
+```{r}
+
+
+
+```
+
+> 7.  Construct a daily total return index for MSFT and GE stocks and the S&P 500 index and plot them
+against each other. Compare your results with the monthly total return indices from above. Are there
+any differences? Discuss.
+
+```{r}
+
+
+
+```
+
+> 8. As before, the holding period returns are normal returns. Create log returns. Calculate the mean,
+variance, skewness, and kurtosis of the normal and log returns. Compare and discuss your results with
+the results from monthly frequency
+
+```{r}
+
+
+
+```
+
+> 9.  Compare the statistical properties of the log holding period return time series both for monthly and
+daily returns. Plot a histogram and discuss how the empirical distributions relate to the normal
+distribution.
+
+```{r}
+
+
+```
+
+> 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to
+pick three random stocks). You will need the holding period returns (both normal and log returns)
+and the total return indices you created.
+
+```{r}
+
+
+
+```
+
+> 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared.
+Discuss your results briefly.
+
+```{r}
+
+
+
+```
+
+> 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns.
+Discuss the results!
+
+```{r}
+
+
+
+```
+
+> 13. Use the three assets and make up a portfolio by assigning arbitrary portfolio weights. What does it
+imply if you keep the weights fixed over time?
+
+```{r}
+
+
+
+```
+
+> 14.  Calculate the portfolio returns and use them to calculate the evolution of a $ 1 investment in the
+portfolio over the sample period. Plot the result against the evolution of a $ 1 investment in each of
+the three stocks. Discuss the result.
+
+```{r}
+
+
+
+```
+
+> 15.  Portfolio theory with matrix algebra
+
+```{r}
+
+
+
+
+
+
+
+
+```
+
+> 15.a Calculate the means, the variance and the pairwise covariances for the three stocks MSFT, GE, and
+JPM for the sample period between 2/1/1990 and 31/12/2002.
+
+> 15.b Define the following matrices that contain returns, expected returns, portfolio weights, and covariances:
+
+> 15.c Note that the expected portfolio return and variance equal:
+
+> 15.d Calculate the return and standard deviation of a portfolio where you equal-weight the three stocks
+- call the portfolio e. Additionally, consider a portfolio y with a weight vector y’ = (0.8, 0.4, −0.2).
+Calculate the risk-return tradeoff of y as well as its covariance with portfolio e.
+
+> 15.e In order to find the global minimum variance portfolio with weights m’ = (mMSF T , mGE, mJPM ),
+we have to solve the following problem
+
+> 15.f Find another efficient portfolio. Namely, the efficient portfolio that gives a return equal to the
+expected return of MSFT. Note, that your minimization problem now becomes:
+
+> 15.g Derive the solution as above in terms of portfolio weights and calculate them in your code. In
+addition, calculate the expected return and the variance of efficient portfolio x as well as its
+covariance with the global minimum portfolio.
+
+> 15.h Plot the entire efficient frontier for the three risky assets.
+
+> 15.i Now, rerun your code with sample moments for the three stocks MSFT, GE, and JPM for the sample
+period between 2/1/2003 and 31/12/2014.
+
+> 15.j Finally, compare your results for the three assets across the two sample periods. Comment on
+potential problems that might arise when you based investment decisions on your analysis. Also
+discuss potential solutions to the problems mentioned.
+
