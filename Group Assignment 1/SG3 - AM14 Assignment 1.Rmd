@@ -5,6 +5,38 @@ author: "Study Group 3: Alberto Lambert, Sammy Chen, Shuhan Li, Michael Gritzbac
 output: html_document
 ---
 
+------------------------
+
+# OUR STRATEGY
+
+## DEADLINE
+
+IDEAL DEADLINE = 21:00 SUNDAY 17TH JANUARY 2021
+INTERNAL DEADLINE = 21:00 WEDNESDAY 20TH JANUARY 2021
+OFFICIAL DEADLINE = 21:00 FRIDAY, 22ND JANUARY 2021
+
+## TEAMS
+
+### TEAM A: Q1-Q12
+### TEAM B: Q13-Q15
+
+### DAY 1 (FRIDAY 15TH JANUARY)
+
+TEAM A: Q1-Q12
+TEAM B: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
+
+### DAY 2 (SATURDAY 16TH JANUARY)
+
+TEAM A: Q1-Q12 FINALISATION
+TEAM B: Q13-Q15
+
+### DAY 3 (SUNDAY 17TH JANUARY)
+
+TEAM A: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
+TEAM B: Q13-Q15 FINALISATION
+
+-------------------------
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -17,14 +49,7 @@ library(readxl)
 
 ```
 
-> 1. Go to CANVAS and download the data for PS1 Monthly.xlsx. The data was downloaded from the
-CRSP (The Center for Research in Security Prices) data base via WRDS (Wharton Research Service)
-that is available for LBS students. Note the file contains data about Microsoft, Exxon Mobil (previously
-Exxon), General Electric, JP Morgan Chase (previously Chemical Banking and Chase Manhattan),
-Intel, Citigroup (previously Primerica and Travellers Group). In addition, the columns vwretd (ewretd)
-and vwredx (ewretx) contain value-weighted (equal-weighted) total returns and total returns excluding
-dividends for the CRSP index that contains stocks from NYSE, AMEX, and NASDAQ. Finally, sprtrn
-contains the total return for the S&P 500 Composite Index.
+> 1. Go to CANVAS and download the data for PS1 Monthly.xlsx. The data was downloaded from the CRSP (The Center for Research in Security Prices) data base via WRDS (Wharton Research Service) that is available for LBS students. Note the file contains data about Microsoft, Exxon Mobil (previously Exxon), General Electric, JP Morgan Chase (previously Chemical Banking and Chase Manhattan), Intel, Citigroup (previously Primerica and Travellers Group). In addition, the columns vwretd (ewretd) and vwredx (ewretx) contain value-weighted (equal-weighted) total returns and total returns excluding dividends for the CRSP index that contains stocks from NYSE, AMEX, and NASDAQ. Finally, sprtrn contains the total return for the S&P 500 Composite Index.
 
 # Loading in the Data
 
@@ -38,11 +63,7 @@ PS1_Daily <- read_excel("PS1_Daily.xlsx")
 
 ```
 
-> 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted)
-prices (PRC), dividends (DVAMT) and adjustment for the number of shares (CFACPR, i.e., the
-adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find
-more information about the variables on the CRSP page online. Calculate returns where you omit the
-dividends, i.e., you focus solely on capital gains (call these returns RETX).
+> 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted) prices (PRC), dividends (DVAMT) and adjustment for the number of shares (CFACPR, i.e., the adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find more information about the variables on the CRSP page online. Calculate returns where you omit the dividends, i.e., you focus solely on capital gains (call these returns RETX).
 
 ```{r}
 
@@ -50,11 +71,7 @@ dividends, i.e., you focus solely on capital gains (call these returns RETX).
 
 ```
 
-> 3. Use the holding period returns to create a total return index for the MSFT and GE stocks and the S&P
-500 index, which shows the theoretical growth in value of an investment in the stock assuming that
-dividends are reinvested (normalize the start value to 1). Do the same for the returns that abstract
-from dividend payments (i.e., use RETX instead). Plot the investments with and without dividends
-for each stock separately. How do dividends affect the results stock by stock?
+> 3. Use the holding period returns to create a total return index for the MSFT and GE stocks and the S&P 500 index, which shows the theoretical growth in value of an investment in the stock assuming that dividends are reinvested (normalize the start value to 1). Do the same for the returns that abstract from dividend payments (i.e., use RETX instead). Plot the investments with and without dividends for each stock separately. How do dividends affect the results stock by stock?
 
 ```{r}
 
@@ -62,17 +79,15 @@ for each stock separately. How do dividends affect the results stock by stock?
 
 ```
 
-> 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the
-unadjusted prices. Discuss.
+> 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
 
 ```{r}
 
 
+
 ```
 
-> 5.  The holding period returns are normal returns. Generate a new variable that contains the corresponding
-log returns (LRET). Calculate the mean, variance, skewness, and kurtosis of the normal and the log
-returns. Plot the normal against the log returns for MSFT. Briefly discuss your results!
+> 5.  The holding period returns are normal returns. Generate a new variable that contains the corresponding log returns (LRET). Calculate the mean, variance, skewness, and kurtosis of the normal and the log returns. Plot the normal against the log returns for MSFT. Briefly discuss your results!
 
 ```{r}
 
@@ -173,11 +188,6 @@ the three stocks. Discuss the result.
 
 
 
-
-
-
-
-
 ```
 
 > 15.a Calculate the means, the variance and the pairwise covariances for the three stocks MSFT, GE, and
@@ -209,4 +219,18 @@ period between 2/1/2003 and 31/12/2014.
 > 15.j Finally, compare your results for the three assets across the two sample periods. Comment on
 potential problems that might arise when you based investment decisions on your analysis. Also
 discuss potential solutions to the problems mentioned.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
