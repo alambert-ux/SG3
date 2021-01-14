@@ -1,0 +1,263 @@
+---
+title: "AM14 Assignment 1 - Sammy"
+author: "Sammy Chen"
+date: "1/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Importing Packages
+
+```{r load_libraries}
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(PerformanceAnalytics)
+library(ggthemes)
+
+```
+
+> 1. Go to CANVAS and download the data for PS1 Monthly.xlsx. The data was downloaded from the CRSP (The Center for Research in Security Prices) data base via WRDS (Wharton Research Service) that is available for LBS students. Note the file contains data about Microsoft, Exxon Mobil (previously Exxon), General Electric, JP Morgan Chase (previously Chemical Banking and Chase Manhattan), Intel, Citigroup (previously Primerica and Travellers Group). In addition, the columns vwretd (ewretd) and vwredx (ewretx) contain value-weighted (equal-weighted) total returns and total returns excluding dividends for the CRSP index that contains stocks from NYSE, AMEX, and NASDAQ. Finally, sprtrn contains the total return for the S&P 500 Composite Index.
+
+# Loading in the Data
+
+```{r loading_data}
+
+#Loading in PS1 monthly data
+PS1_Monthly <- read_excel("PS1_Monthly.xlsx") %>% 
+  mutate(DATE = lubridate::ymd(date)) #fix `date`
+  
+
+```
+
+> 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted) prices (PRC), dividends (DVAMT) and adjustment for the number of shares (CFACPR, i.e., the adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find more information about the variables on the CRSP page online. Calculate returns where you omit the dividends, i.e., you focus solely on capital gains (call these returns RETX).
+
+```{r}
+# PS1_Monthly <- PS1_Monthly %>% 
+#   group_by(TICKER) %>% 
+#   mutate(RET_replicate = (PRC + DVAMT - lag(PRC))/lag(PRC))
+#   mutate(RETX_replicate = (PRC - lag(PRC))/lag(PRC))
+
+```
+
+> 3. Use the holding period returns to create a total return index for the MSFT and GE stocks and the S&P 500 index, which shows the theoretical growth in value of an investment in the stock assuming that dividends are reinvested (normalize the start value to 1). Do the same for the returns that abstract from dividend payments (i.e., use RETX instead). Plot the investments with and without dividends for each stock separately. How do dividends affect the results stock by stock?
+
+```{r}
+PS1_Monthly <- PS1_Monthly %>% 
+  group_by(TICKER) %>% 
+#create total return index for the MSFT and GE stocks and the S&P 500 index
+#with the start value of the first period's return as 1
+  mutate(total_return_index_div = RET/RET[2]) %>%  
+  mutate(total_return_index_no_div = RETX/RETX[2]) %>% 
+  mutate(total_return_index_SP500 = sprtrn/sprtrn[1])
+
+MSFT_return_div <- PS1_Monthly %>% 
+  filter(TICKER == "MSFT") %>% 
+  ggplot(aes(x = total_return_index_div,
+             y = total_return_index_no_div)) +
+    geom_point()+
+    labs(title = "Investment with dividends - MSFT", 
+       x = "total return index with dividends", 
+       y = "total return index withous dividends")+
+    theme_fivethirtyeight()+
+    NULL
+
+MSFT_return_div
+
+GE_return_div <- PS1_Monthly %>% 
+  filter(TICKER == "GE") %>% 
+  ggplot(aes(x = total_return_index_div,
+             y = total_return_index_no_div)) +
+  geom_point()+
+  labs(title = "Investment with dividends - GE", 
+       x = "total return index with dividends", 
+       y = "total return index withous dividends")+
+    theme_fivethirtyeight()+
+    NULL
+
+GE_return_div
+
+
+
+
+```
+
+> 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
+
+```{r}
+PS1_Monthly %>% 
+  filter(TICKER == "GE") %>% 
+  mutate(adjusted_price = PRC/CFACPR) %>% #normailize the price by adjusting for number of shares
+  ggplot(aes(x = PRC, y = adjusted_price))+
+  geom_point()+
+  labs(title = "Comparison of GE prices", 
+       x = "Unadjusted price", 
+       y = "Adjusted price")+
+  theme_fivethirtyeight()+
+    NULL
+
+
+
+```
+
+> 5.  The holding period returns are normal returns. Generate a new variable that contains the corresponding log returns (LRET). Calculate the mean, variance, skewness, and kurtosis of the normal and the log returns. Plot the normal against the log returns for MSFT. Briefly discuss your results!
+
+```{r}
+PS1_Monthly <- PS1_Monthly %>% 
+    mutate(LRET=log(1+RET)) #LRET = ln(1+RET) = ln(Pt/P(t-1))
+
+statistics_monthly <- PS1_Monthly %>% 
+    group_by(TICKER) %>% 
+#using library(PerformanceAnalytics) to calculate the statistics
+    summarise(mean_normal = mean(RET),
+              variance_normal = var(RET),
+              skewness_normal = skewness(RET),
+              kurtosis_normal = kurtosis(RET),
+              mean_log = mean(LRET),
+              variance_log = var(LRET),
+              skewness_log = skewness(LRET), 
+              kurtosis_log = kurtosis(LRET))
+print(statistics_monthly)
+
+# plot normal against log returns for MSFT
+returns_MSFT <- PS1_Monthly %>% 
+    filter(TICKER == 'MSFT') %>% 
+    ggplot(aes(x=RET,y=LRET)) +
+    geom_point()+
+    labs(title = "MSFT return comparison", 
+       x = "RET", 
+       y = "LRET")+
+    theme_fivethirtyeight()+
+    NULL
+
+returns_MSFT
+```
+
+> 6. Go to CANVAS and download the data for PS1 Daily.xlsx. This file contains two worksheets.
+HPR Daily contains the daily holding period returns for the six stocks, the S&P 500 Composite Index
+and the value-weighted market portfolio (including dividends) from CRSP. Prices Daily contains the
+prices for the six stocks and the S&P 500 Composite Index.
+
+```{r importing PS1 Daily data}
+PS1_Daily <- read_excel('PS1_Daily.xlsx',skip=1) %>% 
+    mutate(DATE = lubridate::ymd(DATE))  # fix `date`
+
+PS1_Daily_longer <-pivot_longer(PS1_Daily, #pivot data from wide to long
+                         cols = c(2:7),
+                         names_to = "TICKER",
+                         values_to = "RET")
+
+
+```
+
+> 7.  Construct a daily total return index for MSFT and GE stocks and the S&P 500 index and plot them
+against each other. Compare your results with the monthly total return indices from above. Are there
+any differences? Discuss.
+
+```{r}
+PS1_Daily <- PS1_Daily %>% 
+#create daily total return index for the MSFT and GE stocks and the S&P 500 index
+  mutate(daily_total_return_index_MSFT = MSFT/MSFT[1]) %>%  
+  mutate(daily_total_return_index_GE = GE/GE[1]) %>% 
+  mutate(daily_total_return_index_SP500 = SPRTRN/SPRTRN[1])
+
+MSFT_GE <- PS1_Daily %>% 
+  ggplot(aes(x = daily_total_return_index_MSFT, y = daily_total_return_index_GE)) +
+  geom_point()+
+  labs(title = "Daily total return index comparison", 
+       x = "MSFT", 
+       y = "GE")+
+  theme_fivethirtyeight()+
+    NULL
+
+
+MSFT_GE
+
+MSFT_SP500 <- PS1_Daily %>% 
+  ggplot(aes(x = daily_total_return_index_MSFT, y = daily_total_return_index_SP500)) +
+  geom_point()+
+  labs(title = "Daily total return index comparison", 
+       x = "MSFT", 
+       y = "S&P 500")+
+  theme_fivethirtyeight()+
+  NULL
+  
+MSFT_SP500
+
+GE_SP500 <- PS1_Daily %>% 
+  ggplot(aes(x = daily_total_return_index_GE, y = daily_total_return_index_SP500)) +
+  geom_point()+
+  labs(title = "Daily total return index comparison", 
+       x = "GE", 
+       y = "S&P 500")+
+  theme_fivethirtyeight()+
+  NULL
+
+GE_SP500
+
+```
+
+> 8. As before, the holding period returns are normal returns. Create log returns. Calculate the mean,
+variance, skewness, and kurtosis of the normal and log returns. Compare and discuss your results with
+the results from monthly frequency
+
+```{r}
+# calculation
+PS1_Daily_longer <- PS1_Daily_longer %>% 
+    mutate(LRET=log(1+RET)) 
+statistics_daily <- PS1_Daily_longer %>% 
+    group_by(TICKER) %>% 
+#library(PerformanceAnalytics)
+    summarise(mean_normal = mean(RET),
+              variance_normal = var(RET),
+              skewness_normal = skewness(RET),
+              kurtosis_normal = kurtosis(RET),
+              mean_log = mean(LRET),
+              variance_log = var(LRET),
+              skewness_log = skewness(LRET), 
+              kurtosis_log = kurtosis(LRET))
+
+print(statistics_daily)
+
+
+```
+
+> 9.  Compare the statistical properties of the log holding period return time series both for monthly and
+daily returns. Plot a histogram and discuss how the empirical distributions relate to the normal
+distribution.
+
+```{r}
+
+
+```
+
+> 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to
+pick three random stocks). You will need the holding period returns (both normal and log returns)
+and the total return indices you created.
+
+```{r}
+
+
+
+```
+
+> 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared.
+Discuss your results briefly.
+
+```{r}
+
+
+
+```
+
+> 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns.
+Discuss the results!
+
+```{r}
+
+
+
+```
