@@ -125,6 +125,7 @@ GE_return_div
 > 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
 
 ```{r}
+
 PS1_Monthly %>% 
   filter(TICKER == "GE") %>% 
   mutate(adjusted_price = PRC/CFACPR) %>% #normailize the price by adjusting for number of shares
@@ -135,8 +136,6 @@ PS1_Monthly %>%
        y = "Adjusted price")+
   theme_fivethirtyeight()+
     NULL
-
-
 
 ```
 
