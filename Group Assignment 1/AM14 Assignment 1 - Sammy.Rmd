@@ -177,15 +177,27 @@ HPR Daily contains the daily holding period returns for the six stocks, the S&P 
 and the value-weighted market portfolio (including dividends) from CRSP. Prices Daily contains the
 prices for the six stocks and the S&P 500 Composite Index.
 
-```{r importing PS1 Daily data}
-PS1_Daily <- read_excel('PS1_Daily.xlsx',skip=1) %>% 
+```{r loading_daily_data}
+
+HPR_daily <- read_xlsx("PS1_Daily.xlsx", sheet = "HPR_daily", skip = 1) %>% 
     mutate(DATE = lubridate::ymd(DATE))  # fix `date`
 
-PS1_Daily_longer <-pivot_longer(PS1_Daily, #pivot data from wide to long
-                         cols = c(2:7),
-                         names_to = "TICKER",
-                         values_to = "RET")
+Prices_daily <- read_xlsx("PS1_Daily.xlsx", sheet = "Prices_daily", skip = 1) %>% 
+    mutate(DATE = lubridate::ymd(DATE))  # fix `date`
 
+```
+
+```{r pivoting_data_for_usability}
+
+#privoting prices daily
+Prices_daily_long <-Prices_daily %>% 
+  pivot_longer(cols = c(2:7),names_to = "TICKER",values_to = "PRC") %>% 
+  select(1,3,4,2)
+
+#pivoting holding period returns
+HPR_daily_long <-HPR_daily %>% 
+  pivot_longer(cols = c(2:7),names_to = "TICKER",values_to = "HPR") %>% 
+  select(1,4,5,3,2)
 
 ```
 
@@ -242,15 +254,15 @@ the results from monthly frequency
 
 ```{r}
 # calculation
-PS1_Daily_longer <- PS1_Daily_longer %>% 
-    mutate(LRET=log(1+RET)) 
-statistics_daily <- PS1_Daily_longer %>% 
+HPR_daily_long <- HPR_daily_long %>% 
+    mutate(LRET=log(1+HPR)) 
+statistics_daily <- HPR_daily_long %>% 
     group_by(TICKER) %>% 
 #library(PerformanceAnalytics)
-    summarise(mean_normal = mean(RET),
-              variance_normal = var(RET),
-              skewness_normal = skewness(RET),
-              kurtosis_normal = kurtosis(RET),
+    summarise(mean_normal = mean(HPR),
+              variance_normal = var(HPR),
+              skewness_normal = skewness(HPR),
+              kurtosis_normal = kurtosis(HPR),
               mean_log = mean(LRET),
               variance_log = var(LRET),
               skewness_log = skewness(LRET), 
@@ -293,27 +305,66 @@ pick three random stocks). You will need the holding period returns (both normal
 and the total return indices you created.
 
 ```{r}
-Prices_daily <- read_excel("PS1_Daily.xlsx", sheet = 2, skip = 1)
-stocks_RET <- PS1_Daily_longer %>% 
+#creating matrix for holding period returns
+stocks_RET <- HPR_daily_long %>% 
   filter(TICKER == "MSFT"|
          TICKER == "GE"|
          TICKER == "JPM") %>% 
-  select(1,4,5) 
+  select(1,2,3) 
 
+#RET for stocks
 stocks_RET_wider <- stocks_RET %>%  
   pivot_wider(names_from = "TICKER",
-              values_from = "RET") %>% 
+              values_from = "HPR") %>% 
+  select(-1)
+#matrix of normal returns for MSFT, GE, JPM and S&P500
+stocks_RET_wider <- cbind(stocks_RET_wider, HPR_daily$SPRTRN)
+
+#creating matrix for log returns
+stocks_LRET <- HPR_daily_long %>% 
+  filter(TICKER == "MSFT"|
+         TICKER == "GE"|
+         TICKER == "JPM") %>% 
+  select(1,2,6) 
+ 
+#mutate log returns for S&P 500
+HPR_daily <- HPR_daily %>% 
+  mutate(Log_SPRTRN = log(1+SPRTRN),
+         Log_SPRTRN_squared = (log(1+SPRTRN))^2)
+
+
+stocks_LRET_wider <- stocks_LRET %>%  
+  pivot_wider(names_from = "TICKER",
+              values_from = "LRET") %>% 
   select(-1)
 
-stocks_RET_squared <-stocks_RET %>% 
-  mutate(RET_squared = RET^2) %>%  # mutate RET_squared 
-  select(-3) %>%  #delete unnecessary column: RET
+#matrix of log returns for MSFT, GE, JPM and S&P500
+stocks_LRET_wider <- cbind(stocks_LRET_wider, HPR_daily$Log_SPRTRN)
+
+#daily total return index
+MSFT_daily <- HPR_daily_long %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="MSFT") %>% 
+  mutate(TR_RET_MSFT = cumprod(1*(1+HPR)))
+
+GE_daily <-HPR_daily_long %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="GE") %>% 
+  mutate(TR_RET_GE = cumprod(1*(1+HPR)))
+
+SP500_daily <-HPR_daily_long %>% 
+  select(1, 4) %>%  #select DATE and SPRTRN
+  distinct() %>% 
+  mutate(total_return = cumprod(1*(1+SPRTRN)))
+
+
+#RET squared for stocks
+stocks_RET_squared <-stocks_RET %>%
+  mutate(RET_squared = HPR^2) %>%  # mutate RET_squared
+  select(-3) %>%  #delete unnecessary column: HPR
   pivot_wider(names_from = "TICKER",
-              values_from = "RET_squared") %>% 
+              values_from = "RET_squared") %>%
   select(-1) #delete the date column
-
-
-    
 
 
 ```
@@ -322,20 +373,10 @@ stocks_RET_squared <-stocks_RET %>%
 Discuss your results briefly.
 
 ```{r}
-stocks_LRET <- PS1_Daily_longer %>% 
-  filter(TICKER == "MSFT"|
-         TICKER == "GE"|
-         TICKER == "JPM") %>% 
-  select(1,4,6) 
- 
-stocks_LRET_wider <- stocks_LRET %>%  
-  pivot_wider(names_from = "TICKER",
-              values_from = "LRET") %>% 
-  select(-1)
- 
 #print the covariance matrix for the log return series, using the log returns
 print(cov(stocks_LRET_wider))
- 
+
+#create the log return squared matrix
 stocks_LRET_squared <- stocks_LRET %>% 
   mutate(LRET_squared = LRET^2) %>%  # mutate LRET_squared 
   select(-3) %>%  #delete unnecessary column: LRET
@@ -343,13 +384,15 @@ stocks_LRET_squared <- stocks_LRET %>%
               values_from = "LRET_squared") %>% 
   select(-1) #delete the date column
 
+#create log return squared for S&P 500
+stocks_LRET_squared <- cbind(stocks_LRET_squared, HPR_daily$Log_SPRTRN_squared)
+
 #print the covariance matrix for the log return series, using the log returns squared
 print(cov(stocks_LRET_squared))
 
-
-
-
 ```
+
+Comments: xxxxxxxxxxxxx to be added 
 
 > 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns.
 Discuss the results!
@@ -368,6 +411,7 @@ price_JPM <- acf(Prices_daily$GE, plot = FALSE)
 price_JPM
 plot(price_GE, main = "ACF of JPM daily prices") 
 
+
 #Plot the ACF for log returns of MSFT, GE, JPM
 LRET_MSFT <- acf(stocks_LRET_wider$MSFT, plot = FALSE)
 LRET_MSFT
@@ -380,6 +424,7 @@ plot(LRET_GE, main = "ACF of GE daily log returns")
 LRET_JPM <- acf(stocks_LRET_wider$JPM, plot = FALSE)
 LRET_JPM
 plot(LRET_JPM, main = "ACF of JPM daily log returns") 
+
 
 #Plot the ACF for log return squared of MSFT, GE, JPM
 LRET_squared_MSFT <- acf(stocks_LRET_squared$MSFT, plot = FALSE)
@@ -408,6 +453,7 @@ RET_JPM <- acf(stocks_RET_wider$JPM, plot = FALSE)
 RET_JPM
 plot(RET_JPM, main = "ACF of JPM daily normal returns") 
 
+
 #Plot the ACF for normal return squared of MSFT, GE, JPM
 RET_squared_MSFT <- acf(stocks_RET_squared$MSFT, plot = FALSE)
 RET_squared_MSFT
@@ -423,5 +469,27 @@ plot(RET_squared_JPM, main = "ACF of JPM daily normal return squared")
 
 
 #Plot the ACF for absolute return of MSFT, GE, JPM
+#since absolute return is generated by using RETX,
+#here we use monthly return data
+
+stocks_monthly_RETX <- PS1_Monthly %>% 
+  filter(TICKER == "MSFT"|
+         TICKER == "GE"|
+         TICKER == "JPM") %>% 
+  select(4,14)
+  
+  
+RETX_MSFT_data <- stocks_monthly_RETX %>% 
+  filter(TICKER == "MSFT")
+RETX_MSFT <- acf(RETX_MSFT_data$RETX, plot = FALSE)
+RETX_MSFT
+plot(RETX_MSFT, main = "ACF of MSFT monthly absolute return") 
+
+
+RETX_GE_data <- stocks_monthly_RETX %>% 
+  filter(TICKER == "GE")
+
+RETX_JPM_data <- stocks_monthly_RETX %>% 
+  filter(TICKER == "JPM")
 
 ```
