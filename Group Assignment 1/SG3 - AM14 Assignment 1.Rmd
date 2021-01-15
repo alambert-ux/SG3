@@ -156,14 +156,14 @@ GE <-GE %>%
 
 ```
 
-```{r plotting_total_return_indexes, fig.height=5, fig.width=5}
+```{r plotting_total_return_indexes, fig.height=7, fig.width=7}
 
 #for MSFT both with and without dividends
 ggplot()+
   geom_line(data=MSFT,aes(x=DATE,y=TR_RET),color="red")+
   geom_line(data=MSFT,aes(x=DATE,y=TR_RETX),color="blue")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="MSFT | Microsoft Corporation", subtitle="Total Return Index, Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
+  labs(title="MSFT | Microsoft Corporation", subtitle="Monthly Total Return Index, Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10))+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
   theme(plot.subtitle = element_markdown())
@@ -173,7 +173,7 @@ ggplot()+
   geom_line(data=GE,aes(x=DATE,y=TR_RET),color="red")+
   geom_line(data=GE,aes(x=DATE,y=TR_RETX),color="blue")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="GE | General Electric Company", subtitle="Total Return Index Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
+  labs(title="GE | General Electric Company", subtitle="Monthly Total Return Index Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,16,by=2), limits=c(0,16))+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
   theme(plot.subtitle = element_markdown())
