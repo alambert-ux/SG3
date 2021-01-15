@@ -293,7 +293,27 @@ pick three random stocks). You will need the holding period returns (both normal
 and the total return indices you created.
 
 ```{r}
+Prices_daily <- read_excel("PS1_Daily.xlsx", sheet = 2, skip = 1)
+stocks_RET <- PS1_Daily_longer %>% 
+  filter(TICKER == "MSFT"|
+         TICKER == "GE"|
+         TICKER == "JPM") %>% 
+  select(1,4,5) 
 
+stocks_RET_wider <- stocks_RET %>%  
+  pivot_wider(names_from = "TICKER",
+              values_from = "RET") %>% 
+  select(-1)
+
+stocks_RET_squared <-stocks_RET %>% 
+  mutate(RET_squared = RET^2) %>%  # mutate RET_squared 
+  select(-3) %>%  #delete unnecessary column: RET
+  pivot_wider(names_from = "TICKER",
+              values_from = "RET_squared") %>% 
+  select(-1) #delete the date column
+
+
+    
 
 
 ```
@@ -302,6 +322,30 @@ and the total return indices you created.
 Discuss your results briefly.
 
 ```{r}
+stocks_LRET <- PS1_Daily_longer %>% 
+  filter(TICKER == "MSFT"|
+         TICKER == "GE"|
+         TICKER == "JPM") %>% 
+  select(1,4,6) 
+ 
+stocks_LRET_wider <- stocks_LRET %>%  
+  pivot_wider(names_from = "TICKER",
+              values_from = "LRET") %>% 
+  select(-1)
+ 
+#print the covariance matrix for the log return series, using the log returns
+print(cov(stocks_LRET_wider))
+ 
+stocks_LRET_squared <- stocks_LRET %>% 
+  mutate(LRET_squared = LRET^2) %>%  # mutate LRET_squared 
+  select(-3) %>%  #delete unnecessary column: LRET
+  pivot_wider(names_from = "TICKER",
+              values_from = "LRET_squared") %>% 
+  select(-1) #delete the date column
+
+#print the covariance matrix for the log return series, using the log returns squared
+print(cov(stocks_LRET_squared))
+
 
 
 
@@ -311,7 +355,73 @@ Discuss your results briefly.
 Discuss the results!
 
 ```{r}
+#Plot the ACF for prices of MSFT, GE, JPM
+price_MSFT <- acf(Prices_daily$MSFT, plot = FALSE)
+price_MSFT
+plot(price_MSFT, main = "ACF of MSFT daily prices") 
+
+price_GE <- acf(Prices_daily$GE, plot = FALSE)
+price_GE
+plot(price_GE, main = "ACF of GE daily prices") 
+
+price_JPM <- acf(Prices_daily$GE, plot = FALSE)
+price_JPM
+plot(price_GE, main = "ACF of JPM daily prices") 
+
+#Plot the ACF for log returns of MSFT, GE, JPM
+LRET_MSFT <- acf(stocks_LRET_wider$MSFT, plot = FALSE)
+LRET_MSFT
+plot(LRET_MSFT, main = "ACF of MSFT daily log returns") 
+
+LRET_GE <- acf(stocks_LRET_wider$GE, plot = FALSE)
+LRET_GE
+plot(LRET_GE, main = "ACF of GE daily log returns") 
+
+LRET_JPM <- acf(stocks_LRET_wider$JPM, plot = FALSE)
+LRET_JPM
+plot(LRET_JPM, main = "ACF of JPM daily log returns") 
+
+#Plot the ACF for log return squared of MSFT, GE, JPM
+LRET_squared_MSFT <- acf(stocks_LRET_squared$MSFT, plot = FALSE)
+LRET_squared_MSFT
+plot(LRET_squared_MSFT, main = "ACF of MSFT daily log return squared") 
+
+LRET_squared_GE <- acf(stocks_LRET_squared$GE, plot = FALSE)
+LRET_squared_GE
+plot(LRET_squared_GE, main = "ACF of GE daily log return squared") 
+
+LRET_squared_JPM <- acf(stocks_LRET_squared$JPM, plot = FALSE)
+LRET_squared_JPM
+plot(LRET_squared_JPM, main = "ACF of JPM daily log return squared") 
 
 
+#Plot the ACF for normal returns of MSFT, GE, JPM
+RET_MSFT <- acf(stocks_RET_wider$MSFT, plot = FALSE)
+RET_MSFT
+plot(RET_MSFT, main = "ACF of MSFT daily normal returns") 
+
+RET_GE <- acf(stocks_RET_wider$GE, plot = FALSE)
+RET_GE
+plot(RET_GE, main = "ACF of GE daily normal returns") 
+
+RET_JPM <- acf(stocks_RET_wider$JPM, plot = FALSE)
+RET_JPM
+plot(RET_JPM, main = "ACF of JPM daily normal returns") 
+
+#Plot the ACF for normal return squared of MSFT, GE, JPM
+RET_squared_MSFT <- acf(stocks_RET_squared$MSFT, plot = FALSE)
+RET_squared_MSFT
+plot(RET_squared_MSFT, main = "ACF of MSFT daily normal return squared") 
+
+RET_squared_GE <- acf(stocks_RET_squared$GE, plot = FALSE)
+RET_squared_GE
+plot(RET_squared_GE, main = "ACF of GE daily normal return squared") 
+
+RET_squared_JPM <- acf(stocks_RET_squared$JPM, plot = FALSE)
+RET_squared_JPM
+plot(RET_squared_JPM, main = "ACF of JPM daily normal return squared") 
+
+
+#Plot the ACF for absolute return of MSFT, GE, JPM
 
 ```
