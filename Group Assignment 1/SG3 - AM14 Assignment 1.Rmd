@@ -44,8 +44,11 @@ knitr::opts_chunk$set(echo = TRUE)
 # Importing Packages
 
 ```{r load_libraries}
-
 library(readxl)
+library(tidyverse)
+library(lubridate)
+library(PerformanceAnalytics)
+library(ggthemes)
 
 ```
 
@@ -55,19 +58,57 @@ library(readxl)
 
 ```{r loading_data}
 
-#Loading in PS1 monthly data
-PS1_Monthly <- read_excel("PS1_Monthly.xlsx")
+#loading in PS1 monthly data
+PS1_Monthly <- read_excel("PS1_Monthly.xlsx") %>% 
+  mutate(DATE = lubridate::ymd(date)) %>% #fix `date`
+  select(1,2,19,3:18)
 
-#Loading in PS1 daily data
-PS1_Daily <- read_excel("PS1_Daily.xlsx")
+#addressing missingness in DIVAMT by imputing with 0
+PS1_Monthly[is.na(PS1_Monthly)] <- 0
 
 ```
 
-> 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted) prices (PRC), dividends (DVAMT) and adjustment for the number of shares (CFACPR, i.e., the adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find more information about the variables on the CRSP page online. Calculate returns where you omit the dividends, i.e., you focus solely on capital gains (call these returns RETX).
+> 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted) prices (PRC), dividends (DIVAMT) and adjustment for the number of shares (CFACPR, i.e., the adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find more information about the variables on the CRSP page online. Calculate returns where you omit the dividends, i.e., you focus solely on capital gains (call these returns RETX).
 
-```{r}
+```{r creating_testing_dataframe}
 
+#creating a testing data frame
+testing <- PS1_Monthly %>% 
+  select(3,4,9,7,13,10,14)
 
+```
+
+**The Calculation of Holding Period Returns (RET) is as follows:**
+
+$RET_t \ = \ \frac{(PRC_t + DIVAMT_t)/CFACPR_t}{PRC_{t-1}/CFACPR_{t-1}}-1$
+
+```{r calculating_RET}
+
+#calculating RET from PRC, DIVAMT and CFACPR
+testing <- testing %>% 
+  group_by(TICKER) %>% 
+  mutate(RET_rep = round(((((PRC+DIVAMT)/CFACPR)/(lag(PRC)/lag(CFACPR)))-1),6)) %>% 
+  ungroup()
+           
+#evaluating whether this calculation was successful
+summary(testing$RET==testing$RET_rep)
+
+```
+
+**The Calculation of Holding Period Returns, Omitting Dividends (RETX) is as follows:**
+
+$RETX_t \ = \ \frac{(PRC_t)/CFACPR_t}{PRC_{t-1}/CFACPR_{t-1}}-1$
+
+```{r calculating_RETX}
+
+#calculating RETX
+testing <- testing %>% 
+  group_by(TICKER) %>% 
+  mutate(RETX_rep = round(((((PRC)/CFACPR)/(lag(PRC)/lag(CFACPR)))-1),6)) %>% 
+  ungroup()
+  
+#evaluating whether this calculation was successful
+summary(testing$RETX==testing$RETX_rep)
 
 ```
 
