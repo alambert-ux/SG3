@@ -259,6 +259,7 @@ and the total return indices you created.
 
 
 
+
 ```
 
 > 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared.
