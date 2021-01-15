@@ -222,17 +222,34 @@ statistics_daily <- PS1_Daily_longer %>%
 
 print(statistics_daily)
 
-
 ```
 
 > 9.  Compare the statistical properties of the log holding period return time series both for monthly and
 daily returns. Plot a histogram and discuss how the empirical distributions relate to the normal
 distribution.
 
-```{r}
+```{r compare statistical properties of log return}
+stat_LRET_monthly <- PS1_Monthly %>% 
+  ggplot(aes(x = LRET))+
+  geom_histogram()+
+  facet_wrap(~TICKER)+
+  theme_fivethirtyeight()+
+  NULL
 
+stat_LRET_monthly
+
+stat_LRET_daily <- PS1_Daily_longer %>% 
+  ggplot(aes(x = LRET))+
+  geom_histogram()+
+  facet_wrap(~TICKER)+
+  theme_fivethirtyeight()+
+  NULL
+
+stat_LRET_daily
 
 ```
+From the histograms of log returns of different holding periods, we can see that distributions are skewed to the left. Probably it is due to some large negative return figures. When the holding period increases from a day to a month, the tails of the distributions become heavier. The monthly log holding period return time series distribution is closer to normal distribution than the daily log return. 
+
 
 > 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to
 pick three random stocks). You will need the holding period returns (both normal and log returns)
