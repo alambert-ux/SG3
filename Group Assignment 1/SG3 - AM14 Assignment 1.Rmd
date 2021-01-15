@@ -49,6 +49,7 @@ library(tidyverse)
 library(lubridate)
 library(PerformanceAnalytics)
 library(ggthemes)
+library(ggtext)
 
 ```
 
@@ -93,6 +94,11 @@ testing <- testing %>%
 #evaluating whether this calculation was successful
 summary(testing$RET==testing$RET_rep)
 
+#we find NAs for the first REP of each TICKER, which makes sense since there is no prior period - these are recoded to 0
+testing[is.na(testing)] <- 0
+
+#there are 69 values for which my REP_rep does not match REP
+
 ```
 
 **The Calculation of Holding Period Returns, Omitting Dividends (RETX) is as follows:**
@@ -110,21 +116,90 @@ testing <- testing %>%
 #evaluating whether this calculation was successful
 summary(testing$RETX==testing$RETX_rep)
 
+#we find NAs for the first REPX of each TICKER, which makes sense since there is no prior period - these are recoded to 0
+testing[is.na(testing)] <- 0
+
+#there are 62 values for which my REPX_rep does not match REPX
+
 ```
 
 > 3. Use the holding period returns to create a total return index for the MSFT and GE stocks and the S&P 500 index, which shows the theoretical growth in value of an investment in the stock assuming that dividends are reinvested (normalize the start value to 1). Do the same for the returns that abstract from dividend payments (i.e., use RETX instead). Plot the investments with and without dividends for each stock separately. How do dividends affect the results stock by stock?
 
-```{r}
+```{r creating_total_RET_indexes}
 
+MSFT <-PS1_Monthly %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="MSFT") %>% 
+  mutate(TR_RET = cumprod(1*(1+RET)))
 
+GE <-PS1_Monthly %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="GE") %>% 
+  mutate(TR_RET = cumprod(1*(1+RET)))
+
+SP500 <-PS1_Monthly %>% 
+  mutate(total_return = cumprod(1*(1+sprtrn)))
 
 ```
 
+```{r creating_total_RETX_indexes}
+
+MSFT <-MSFT %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="MSFT") %>% 
+  mutate(TR_RETX = cumprod(1*(1+RETX)))
+
+GE <-GE %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="GE") %>% 
+  mutate(TR_RETX = cumprod(1*(1+RETX)))
+
+```
+
+```{r plotting_total_return_indexes, fig.height=5, fig.width=5}
+
+#for MSFT both with and without dividends
+ggplot()+
+  geom_line(data=MSFT,aes(x=DATE,y=TR_RET),color="red")+
+  geom_line(data=MSFT,aes(x=DATE,y=TR_RETX),color="blue")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="MSFT | Microsoft Corporation", subtitle="Total Return Index, Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10))+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  theme(plot.subtitle = element_markdown())
+
+#for GE both with and without dividends
+ggplot()+
+  geom_line(data=GE,aes(x=DATE,y=TR_RET),color="red")+
+  geom_line(data=GE,aes(x=DATE,y=TR_RETX),color="blue")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="GE | General Electric Company", subtitle="Total Return Index Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,16,by=2), limits=c(0,16))+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  theme(plot.subtitle = element_markdown())
+
+```
+
+These two plots clearly demonstrate that including dividends results in a substantially higher total return over time for both stocks surveyed. More specifically, for MSFT, the inclusion of dividend payments results in a total return of \$115 over the entire period from the initial \$1 investment, over 1.5x greater than the return excluding dividend payments, of just \$74. Similarly, for GE, the full-period return including dividends is approximately \$10 is 2x greater than that excluding dividend payments, of just \$4.9. 
+
+Thus, arguably dividends have a greater effect on total returns across the full period for GE stock than MSFT stock, despite MSFT having considerably larger total returns overall. 
+
 > 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
 
-```{r}
+```{r normalizing_GE_price}
 
-
+GE <- GE %>% 
+  mutate(adjusted_price = PRC/CFACPR) %>% #normailize the price by adjusting for number of shares
+  
+  
+  
+  ggplot(aes(x = PRC, y = adjusted_price))+
+  geom_point()+
+  labs(title = "Comparison of GE prices", 
+       x = "Unadjusted price", 
+       y = "Adjusted price")+
+  theme_fivethirtyeight()+
+    NULL
 
 ```
 
