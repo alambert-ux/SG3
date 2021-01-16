@@ -20,22 +20,12 @@ OFFICIAL DEADLINE = 21:00 FRIDAY, 22ND JANUARY 2021
 ### TEAM A: Q1-Q12 - Sammy & Alberto
 ### TEAM B: Q13-Q15 - Michael, Mehek & Shuhan
 
-### DAY 1 (FRIDAY 15TH JANUARY)
-
-TEAM A: Q1-Q12 FINALISATION
-TEAM B: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
-
-### DAY 2 (SATURDAY 16TH JANUARY)
-
-TEAM A: Q1-Q12 FINALISATION
-TEAM B: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
-
-### DAY 3 (SUNDAY 17TH JANUARY)
+### (SUNDAY 17TH JANUARY)
 
 TEAM A: ASSISTANCE
 TEAM B: Q13-Q15 FINALISATION
 
-### DAY 4 (MONDAY 18TH JANUARY)
+### (MONDAY 18TH JANUARY)
 
 TEAM A: ASSISTANCE
 TEAM B: Q13-Q15 FINALISATION
@@ -59,9 +49,9 @@ library(patchwork)
 
 ```
 
-> 1. Go to CANVAS and download the data for PS1 Monthly.xlsx. The data was downloaded from the CRSP (The Center for Research in Security Prices) data base via WRDS (Wharton Research Service) that is available for LBS students. Note the file contains data about Microsoft, Exxon Mobil (previously Exxon), General Electric, JP Morgan Chase (previously Chemical Banking and Chase Manhattan), Intel, Citigroup (previously Primerica and Travellers Group). In addition, the columns vwretd (ewretd) and vwredx (ewretx) contain value-weighted (equal-weighted) total returns and total returns excluding dividends for the CRSP index that contains stocks from NYSE, AMEX, and NASDAQ. Finally, sprtrn contains the total return for the S&P 500 Composite Index.
+# QUESTION 1
 
-# Loading in the Data
+> 1. Go to CANVAS and download the data for PS1 Monthly.xlsx. The data was downloaded from the CRSP (The Center for Research in Security Prices) data base via WRDS (Wharton Research Service) that is available for LBS students. Note the file contains data about Microsoft, Exxon Mobil (previously Exxon), General Electric, JP Morgan Chase (previously Chemical Banking and Chase Manhattan), Intel, Citigroup (previously Primerica and Travellers Group). In addition, the columns vwretd (ewretd) and vwredx (ewretx) contain value-weighted (equal-weighted) total returns and total returns excluding dividends for the CRSP index that contains stocks from NYSE, AMEX, and NASDAQ. Finally, sprtrn contains the total return for the S&P 500 Composite Index.
 
 ```{r loading_monthly_data}
 
@@ -75,6 +65,8 @@ PS1_Monthly[is.na(PS1_Monthly)] <- 0
 
 ```
 
+# QUESTION 2
+
 > 2. Make sure you understand how the holding period returns (RET) are calculated given the (unadjusted) prices (PRC), dividends (DIVAMT) and adjustment for the number of shares (CFACPR, i.e., the adjusted price equals PRC/CFACPR). That is, replicate the returns using the raw data. You can find more information about the variables on the CRSP page online. Calculate returns where you omit the dividends, i.e., you focus solely on capital gains (call these returns RETX).
 
 ```{r creating_testing_dataframe}
@@ -87,118 +79,161 @@ testing <- PS1_Monthly %>%
 
 **The Calculation of Holding Period Returns (RET) is as follows:**
 
-$RET_t \ = \ \frac{(PRC_t + DIVAMT_t)/CFACPR_t}{PRC_{t-1}/CFACPR_{t-1}}-1$
+$RET_t \ = \ \frac{(PRC_t/CFACPR_t)+DIVAMT_t}{PRC_{t-1}/CFACPR_{t-1}}-1$  
 
+where $PRC_t/CFACPR_t$ is the share-adjusted stock price at time $t$, and $DIVAMT_t$ is the dividend payout at time t. 
+
+**Creating a RET Calculator**
 ```{r calculating_RET}
 
-#calculating RET from PRC, DIVAMT and CFACPR
-testing <- testing %>% 
+#creating a function to calculate RET with the arguments: (I) price (PRC), (II) dividends (DIVAMT) and number of shares adjustment (CFACPR)
+RET_calculator <- function(PRC, DIVAMT, CFACPR) {
+  
+  #copying the price column of the data frame
+  RET = PRC
+  
+  #setting first period returns to zero
+  RET[1] = 0 
+  
+  #looping over the rows to calculate and assign values to RET 
+  for (n in 2:length(PRC)) {
+    
+    #calculating RET using the stated formula
+    RET[n] = round(((PRC[n]/CFACPR[n] + DIVAMT[n])/(PRC[n-1]/CFACPR[n-1]) - 1),6)
+  }
+  
+  #outputting the RET vector
+  return(RET)
+}
+
+```
+
+*Testing the RET Calculator**
+```{r testing_RET_calculator}
+
+#testing the RET calculator for all the stocks in the data frame
+testing<-testing %>% 
   group_by(TICKER) %>% 
-  mutate(RET_rep = round(((((PRC+DIVAMT)/CFACPR)/(lag(PRC)/lag(CFACPR)))-1),6)) %>% 
-  ungroup()
-           
-#evaluating whether this calculation was successful
+  mutate(RET_rep = RET_calculator(PRC, DIVAMT, CFACPR))
+
+#evaluating whether the RET calculation has been accurate
 summary(testing$RET==testing$RET_rep)
 
-#we find NAs for the first REP of each TICKER, which makes sense since there is no prior period - these are recoded to 0
-testing[is.na(testing)] <- 0
-
-#there are 69 values for which my REP_rep does not match REP
+#consequently, we find that in the vast majority of cases (1519) this calculation is successful - though in 298 instances the calculated RET_rep is not identical, suggesting our formulation is imperfect
 
 ```
 
 **The Calculation of Holding Period Returns, Omitting Dividends (RETX) is as follows:**
 
-$RETX_t \ = \ \frac{(PRC_t)/CFACPR_t}{PRC_{t-1}/CFACPR_{t-1}}-1$
+$RETX_t \ = \ \frac{PRC_t/CFACPR_t}{PRC_{t-1}/CFACPR_{t-1}}-1$  
 
+where $PRC_t/CFACPR_t$ is the share-adjusted stock price at time $t$.
+
+We now repeat the same calculation process, omitting DIVAMT from the equation. 
+
+**Creating a RETX Calculator**
 ```{r calculating_RETX}
 
-#calculating RETX
-testing <- testing %>% 
-  group_by(TICKER) %>% 
-  mutate(RETX_rep = round(((((PRC)/CFACPR)/(lag(PRC)/lag(CFACPR)))-1),6)) %>% 
-  ungroup()
+#creating a function to calculate RETX with the arguments: (I) price (PRC), and (II) number of shares adjustment (CFACPR)
+RETX_calculator <- function(PRC, CFACPR) {
   
-#evaluating whether this calculation was successful
-summary(testing$RETX==testing$RETX_rep)
-
-#we find NAs for the first REPX of each TICKER, which makes sense since there is no prior period - these are recoded to 0
-testing[is.na(testing)] <- 0
-
-#there are 62 values for which my REPX_rep does not match REPX
+  #copying the price column of the data frame
+  RETX = PRC
+  
+  #setting first period returns to zero
+  RETX[1] = 0 
+  
+  #looping over the rows to calculate and assign values to RETX 
+  for (n in 2:length(PRC)) {
+    
+    #calculating RETX using the stated formula
+    RETX[n] = round(((PRC[n]/CFACPR[n])/(PRC[n-1]/CFACPR[n-1]) - 1),6)
+  }
+  
+  #outputting the RETX vector
+  return(RETX)
+}
 
 ```
+
+**Testing the RETX Calculator**
+```{r testing_RETX_calculator}
+
+#testing the RET calculator for all the stocks in the data frame
+testing<-testing %>% 
+  group_by(TICKER) %>% 
+  mutate(RETX_rep = RETX_calculator(PRC, CFACPR))
+
+#evaluating whether the RET calculation has been accurate
+summary(testing$RETX==testing$RETX_rep)
+
+#consequently, we find that in the vast majority of cases (1755) this calculation is successful - though in 62 instances the calculated RETX_rep is not identical, suggesting our formulation is imperfect
+
+```
+
+# QUESTION 3
 
 > 3. Use the holding period returns to create a total return index for the MSFT and GE stocks and the S&P 500 index, which shows the theoretical growth in value of an investment in the stock assuming that dividends are reinvested (normalize the start value to 1). Do the same for the returns that abstract from dividend payments (i.e., use RETX instead). Plot the investments with and without dividends for each stock separately. How do dividends affect the results stock by stock?
 
-```{r creating_total_RET_indexes}
+The total return index for a given stock is: $Price_t = Price_{t-1}(1+Return_t)$
 
+**Applying a Cumulative Product Approach to Calculate Total Return Indexes**
+```{r creating_total_RET/RETX_indexes}
+
+#creating the total return index for MSFT
 MSFT_monthly <-PS1_Monthly %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="MSFT") %>% 
-  mutate(TR_RET = cumprod(1*(1+RET)))
+  mutate(
+    
+    TR_RET = cumprod(1*(1+RET)),
+    TR_RETX = cumprod(1*(1+RETX)),
+    TR_SP500 = cumprod(1*(1+sprtrn)),
+        
+         )
 
+#using the TR function to create the total return index for GE
 GE_monthly <-PS1_Monthly %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="GE") %>% 
-  mutate(TR_RET = cumprod(1*(1+RET)))
+  mutate(
+    
+    TR_RET = cumprod(1*(1+RET)),
+    TR_RETX = cumprod(1*(1+RETX)),
+    TR_SP500 = cumprod(1*(1+sprtrn)),
+        
+         )
 
-SP500_monthly <-PS1_Monthly %>% 
-  group_by(DATE) %>% 
-  unique() %>% 
-  mutate(TR_RET = cumprod(1*(1+sprtrn)))
-
-```
-
-```{r creating_total_RETX_indexes}
-
-MSFT_monthly <-MSFT_monthly %>% 
-  group_by(TICKER) %>% 
-  filter(TICKER=="MSFT") %>% 
-  mutate(TR_RETX = cumprod(1*(1+RETX)))
-
-GE_monthly <-GE_monthly %>% 
-  group_by(TICKER) %>% 
-  filter(TICKER=="GE") %>% 
-  mutate(TR_RETX = cumprod(1*(1+RETX)))
+#note that due to duplicated dates, using a cumulative product approach (or a function approach) on sprtrn (to calculate the S&P500 total return) will not produce an accurate total return index
 
 ```
 
-```{r plotting_monthly_total_return_indexes}
-
-#(monthly) plotting MSFT and GE in comparison to each other and SP500
-monthly_returns <- ggplot()+
-  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RET),color="orange")+
-  geom_line(data=GE_monthly,aes(x=DATE,y=TR_RET),color="purple")+
-  geom_line(data=SP500_monthly,aes(x=DATE,y=TR_RET),color="gray45")+
-  theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="Monthly Total Returns Comparison", subtitle="Monthly Total Return Index, Normalised to $1 Investment for <span style='color:orange;'>MSFT</span>, <span style='color:purple;'>GE</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
-  scale_x_date(date_breaks="2 years",date_labels="%Y")+
-  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
-  theme(plot.subtitle = element_markdown())
-
-monthly_returns
-
-```
-
-```{r plotting_monthly_total_return_indexes_dividends, fig.height=7, fig.width=7}
+**Plotting the Index for MSFT**
+```{r plotting_monthly_total_return_index_MSFT, fig.height=7, fig.width=7}
 
 #for MSFT both with and without dividends
 ggplot()+
   geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RET),color="red")+
   geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RETX),color="blue")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_SP500),color="gray45")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="MSFT | Microsoft Corporation", subtitle="Monthly Total Return Index, Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
+  labs(title="MSFT | Microsoft Corporation", subtitle="Monthly Total Return Index <span style='color:red;'>Including Dividends</span>, <span style='color:blue;'>Excluding Dividends</span> and for the <span style='color:gray45;'>S&P500</span></span>",x="Date",y="Total Return")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10))+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
   theme(plot.subtitle = element_markdown())
+
+```
+
+**Plotting the Index for GE**
+```{r plotting_monthly_total_return_index_GE, fig.height=7, fig.width=7}
 
 #for GE both with and without dividends
 ggplot()+
   geom_line(data=GE_monthly,aes(x=DATE,y=TR_RET),color="red")+
   geom_line(data=GE_monthly,aes(x=DATE,y=TR_RETX),color="blue")+
+  geom_line(data=GE_monthly,aes(x=DATE,y=TR_SP500),color="gray45")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="GE | General Electric Company", subtitle="Monthly Total Return Index Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
+  labs(title="GE | General Electric Company", subtitle="Monthly Total Return Index <span style='color:red;'>Including Dividends</span>, <span style='color:blue;'>Excluding Dividends</span> and for the <span style='color:gray45;'>S&P500</span></span>",x="Date",y="Total Return")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,16,by=2), limits=c(0,16))+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
   theme(plot.subtitle = element_markdown())
@@ -207,9 +242,11 @@ ggplot()+
 
 These two plots clearly demonstrate that including dividends results in a substantially higher total return over time for both stocks surveyed. 
 
-Notably (as we would expect), the divergence of total returns including dividends from total returns excluding dividends increases consistently over the period as the returns accruing from dividends compound. More specifically, for MSFT, the inclusion of dividend payments results in a total return of \$115 over the entire period from the initial \$1 investment, over 1.5x greater than the return excluding dividend payments, of just \$74. Similarly, for GE, the full-period return including dividends is approximately \$10 is 2x greater than that excluding dividend payments, of just \$4.9. 
+Notably (as we would expect), the divergence of total returns including dividends from total returns excluding dividends increases consistently over the period as the returns accruing from dividends compound. More specifically, for MSFT, the inclusion of dividend payments results in a total return of ~\$115 over the entire period from an initial \$1 investment, over 1.5x greater than the return excluding dividend payments, of just ~\$74. Similarly, for GE, the full-period return including dividends is ~\$10 is 2x greater than that excluding dividend payments, of just \$4.9. 
 
 Thus, arguably dividends have a greater effect on total returns across the full period for GE stock than MSFT stock, despite MSFT having considerably larger total returns overall. Again, this is to be expected, since MSFT only began to issue dividends in January 2003, while GE issued dividends throughout the period surveyed, allowing total returns accruing from dividends to compound over a considerably longer time period. 
+
+# QUESTION 4
 
 > 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
 
@@ -233,11 +270,21 @@ ggplot()+
 
 Reviewing the relationship between GE's nominal and adjusted share prices, it is clear by the steep and immediate drop in nominal share price, to the exact level of the adjusted share price, that there was a stock split. Indeed, this drop from approximately \$160 per share, to approximately \$55 per share, is consistent with GE's 3 for 1 stock split in mid-2000, as discussed in GE's [2000 Annual Report](https://www.annualreports.com/HostedData/AnnualReportArchive/g/NYSE_GE_2000.pdf "2000 Annual Report"){target="_blank"}. 
 
+Alongside the dividend comparison plots above, this demonstrates dividend payments and price adjustment (not just nominal prices) are critical components of assets which must be factored into returns. 
+
+# QUESTION 5
+
 > 5.  The holding period returns are normal returns. Generate a new variable that contains the corresponding log returns (LRET). Calculate the mean, variance, skewness, and kurtosis of the normal and the log returns. Plot the normal against the log returns for MSFT. Briefly discuss your results!
+
+Log returns are calculated as follows:
+
+$LRET = ln(PRC_t/PRC_{t-1}) = ln(1+RET)$,   
+
+where $PRC_t$ is the asset price at time $t$ and $RET=(PRC_t/PRC_{t-1}-1)$
 
 ```{r log_monthly_returns}
 
-#creating the log returns variable, LRET = ln(1+RET) = ln(PRC/lag(PRC))
+#creating the log returns variable
 PS1_Monthly <- PS1_Monthly %>% 
     mutate(LRET=log(1+RET)) 
 
@@ -264,7 +311,9 @@ print(statistics_monthly)
 
 ```
 
-These distributions demonstrate how the logged returns of key assets such as MSFT and GE are more leptokurtic (with fatter tails) than the normal returns, and more negatively skewed. This is to be expected since taking the log of returns adjusts for the effect of a substantial number of positive outliers. Aside from kurtosis and skew (which is represented by the logged mean return being consistently smaller than the normal mean return), the variance of the normal returns and logged returns are similar: the logged return variance being only marginally smaller than the normal return variance, again due to mitgation of the effects of outliers at the positive extreme. 
+These distributions demonstrate how the logged returns of key assets such as MSFT and GE have a lower kurtosis than the normal returns, and less left-skewed. This is to be expected since taking the log of returns adjusts for the effect of a substantial number of positive outliers. 
+
+Aside from kurtosis and skew (which is represented by the logged mean return being consistently smaller than the normal mean return), the variance of the normal returns and logged returns are similar: the logged return variance being only marginally smaller than the normal return variance, again due to mitgation of the effects of outliers at the positive extreme. 
 
 ```{r MSFT_monthly_returns_plot, fig.height=7, fig.width=7}
 
@@ -284,7 +333,13 @@ ggplot()+
 
 ```
 
-This plot demonstrates how logged returns closely approximate normal returns. However, consistent with the statistical distributions themselves, normal return peaks are marginally higher than those for logged returns, which adjust for outliers at the positive extreme. This means that, statistically, logged returns have marginally lower: mean and variance, and less positive (more negative) skewness, than normal returns. 
+**Conclusions on Logged vs. Normal Returns**
+
+This plot demonstrates how logged returns closely approximate normal returns. However, consistent with the statistical distributions themselves, normal return peaks are marginally higher than those for logged returns, which adjust for outliers. This means that, statistically, logged returns have marginally lower: mean and variance, less positive (more negative) left skewness and lower kurtosis, than normal returns. 
+
+Ultimately the log formulation is powerful because it allows us to add asset returns in order to estimate total returns over time, greatly simplifying returns analysis. 
+
+# QUESTION 6
 
 > 6. Go to CANVAS and download the data for PS1 Daily.xlsx. This file contains two worksheets. HPR Daily contains the daily holding period returns for the six stocks, the S&P 500 Composite Index and the value-weighted market portfolio (including dividends) from CRSP. Prices Daily contains the prices for the six stocks and the S&P 500 Composite Index.
 
@@ -306,9 +361,11 @@ Prices_daily_long <-Prices_daily %>%
 
 #pivoting holding period returns
 HPR_daily_long <-HPR_daily %>% 
-  pivot_longer(cols = c(2:9),names_to = "TICKER",values_to = "HPR")
+  pivot_longer(cols = c(2:9),names_to = "TICKER",values_to = "RET")
 
 ```
+
+# QUESTION 7
 
 > 7. Construct a daily total return index for MSFT and GE stocks and the S&P 500 index and plot them against each other. Compare your results with the monthly total return indices from above. Are there any differences? Discuss.
 
@@ -318,58 +375,105 @@ HPR_daily_long <-HPR_daily %>%
 MSFT_daily <-HPR_daily_long %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="MSFT") %>% 
-  mutate(TR_RET = cumprod(1*(1+HPR)))
+  mutate(TR_RET = cumprod(1*(1+RET)))
 
 #creating GE daily total return index
 GE_daily <-HPR_daily_long %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="GE") %>% 
-  mutate(TR_RET = cumprod(1*(1+HPR)))
+  mutate(TR_RET = cumprod(1*(1+RET)))
     
-#creating SP500 daily total return index
+#creating SP500 daily total return index (this now works, because pivoting longer has removed duplicate date entries)
 SP500_daily <-HPR_daily_long %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="SPRTRN") %>% 
-  mutate(TR_RET = cumprod(1*(1+HPR)))
+  mutate(TR_RET = cumprod(1*(1+RET)))
     
 ```
 
-```{r plotting_daily_total_return_indexes}
+## Monthly Total Return Indexes
 
-#(daily) plotting MSFT and GE in comparison to each other and SP500
-daily_returns <- ggplot()+
-  geom_line(data=MSFT_daily,aes(x=DATE,y=TR_RET),color="orange")+
-  geom_line(data=GE_daily,aes(x=DATE,y=TR_RET),color="purple")+
-  geom_line(data=SP500_daily,aes(x=DATE,y=TR_RET),color="gray45")+
+**Plotting the Monthly Total Return Index for MSFT**
+```{r monthly_total_return_index_MSFT, fig.height=10, fig.width=10}
+
+#(monthly) plotting MSFT in comparison to the SP500
+monthly_returns_MSFT <- ggplot()+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RET),color="orange")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_SP500),color="gray45")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="Daily Total Returns Comparison", subtitle="Daily Total Return Index, Normalised to $1 Investment for <span style='color:orange;'>MSFT</span>, <span style='color:purple;'>GE</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
+  labs(title="MSFT | Monthly Total Returns Comparison", subtitle="Monthly Total Returns Index for <span style='color:orange;'>MSFT</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
   theme(plot.subtitle = element_markdown())
 
-daily_returns
+```
+
+**Plotting the Monthly Total Return Index for GE**
+```{r monthly_total_return_index_GE, fig.height=10, fig.width=10}
+
+#(monthly) plotting GE in comparison to the SP500
+monthly_returns_GE <- ggplot()+
+  geom_line(data=GE_monthly,aes(x=DATE,y=TR_RET),color="purple")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_SP500),color="gray45")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="GE | Monthly Total Returns Comparison", subtitle="Monthly Total Returns Index for <span style='color:purple;'>GE</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,15,by=1), limits=c(0,15))+
+  theme(plot.subtitle = element_markdown())
 
 ```
+
+## Daily Total Return Indexes
+
+**Plotting the Index for MSFT**
+```{r plotting_daily_total_return_index_MSFT, fig.height=10, fig.width=10}
+
+#(daily) plotting MSFT and GE in comparison to each other and SP500
+daily_returns_MSFT <- ggplot()+
+  geom_line(data=MSFT_daily,aes(x=DATE,y=TR_RET),color="orange")+
+  geom_line(data=SP500_daily,aes(x=DATE,y=TR_RET),color="gray45")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="MSFT | Daily Total Returns Comparison", subtitle="Daily Total Returns Index for <span style='color:orange;'>MSFT</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
+  theme(plot.subtitle = element_markdown())
+
+```
+
+**Plotting the Index for MSFT**
+```{r plotting_daily_total_return_index_GE, fig.height=10, fig.width=10}
+
+#(daily) plotting MSFT and GE in comparison to each other and SP500
+daily_returns_GE <- ggplot()+
+  geom_line(data=GE_daily,aes(x=DATE,y=TR_RET),color="purple")+
+  geom_line(data=SP500_daily,aes(x=DATE,y=TR_RET),color="gray45")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="GE | Daily Total Returns Comparison", subtitle="Daily Total Returns Index for <span style='color:purple;'>GE</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,15,by=1), limits=c(0,15))+
+  theme(plot.subtitle = element_markdown())
+
+```
+
 
 ```{r plotting_total_return_indexes, fig.height=10, fig.width=20}
 
 #plotting the two alongside one another
-daily_returns+monthly_returns
+(daily_returns_MSFT+monthly_returns_MSFT)/(daily_returns_GE+monthly_returns_GE)
 
 ```
 
-Comparing the daily and monthly total return indexes shown above, it is clear that each asset demonstrates effectively identical trends over the course of the period. However, volatility is evidently (and expectedly) higher in daily returns than monthly returns, and due to the 
+Comparing the daily and monthly total return indexes shown above, it is clear that each asset demonstrates identical trends over the course of the period, though (as we would expect) the daily returns index exhibits considerably greater price volatility, which is smoothed by monthly returns calculations. 
 
-has the greatest impact on the S&P500. 
+# QUESTION 8
 
-
-> 8. As before, the holding period returns are normal returns. Create log returns. Calculate the mean, variance, skewness, and kurtosis of the normal and log returns. Compare and discuss your results with the results from monthly frequency
+> 8. As before, the holding period returns are normal returns. Create log returns. Calculate the mean, variance, skewness, and kurtosis of the normal and log returns. Compare and discuss your results with the results from monthly frequency.
 
 ```{r log_daily_returns}
 
 #creating the log returns variable, LRET = ln(1+RET) = ln(PRC/lag(PRC))
 HPR_daily_long <-HPR_daily_long %>% 
-  mutate(LRET=log(1+HPR))
+  mutate(LRET=log(1+RET))
 
 #calculating the mean, variance, skewness, and kurtosis of the normal (RET) and the log (LRET) returns
 statistics_daily <- HPR_daily_long %>% 
@@ -378,10 +482,10 @@ statistics_daily <- HPR_daily_long %>%
 #using the library(PerformanceAnalytics) to calculate the statistics
     summarise(
       
-      mean_normal = mean(HPR),
-      variance_normal = var(HPR),
-      skewness_normal = skewness(HPR),
-      kurtosis_normal = kurtosis(HPR),
+      mean_normal = mean(RET),
+      variance_normal = var(RET),
+      skewness_normal = skewness(RET),
+      kurtosis_normal = kurtosis(RET),
       
       mean_log = mean(LRET),
       variance_log = var(LRET),
@@ -390,93 +494,347 @@ statistics_daily <- HPR_daily_long %>%
       
       )
 
+#comparing daily and monthly normal and logged statistics
 print(statistics_daily)
+print(statistics_monthly)
 
 ```
 
+**Conclusions on Logged vs. Normal Returns for DAILY vs. MONTHLY Returns**
+
+As for Monthly returns, we find that logged daily returns demonstrate marginally lower: mean and variance, less positive (more negative) left skewness and lower kurtosis, than normal returns. 
+
+As would be expected, relative to monthly returns, normal daily returns have a considerably lower mean and variance, are much more strongly positively (left) skewed, and have considerably higher kurtosis. 
+
+Evidently, calculation of (normal) returns on a *monthly basis* not only smooths out price volatility (variance), but results in a distribution which more *closely approximates the normal distribution* (no leptokurtosis or 'fat tails', no substantive positive or negative skew). 
+
+# QUESTION 9 
 
 > 9.  Compare the statistical properties of the log holding period return time series both for monthly and daily returns. Plot a histogram and discuss how the empirical distributions relate to the normal distribution.
 
-```{r}
+**Logged Monthly Distribution**
+```{r logged_monthly_distribution, fig.height=10, fig.width=10}
 
+distribution_log_monthly <- PS1_Monthly %>% 
+  ggplot(aes(x = LRET))+
+  geom_histogram(binwidth = 0.01, fill="pink")+
+  facet_wrap(~TICKER)+
+  theme_fivethirtyeight()+
+  theme(axis.title=element_text())+
+  labs(title="Monthly Log Return Distribution",subtitle="Comparing the Distribution of Monthly and Daily Log Returns",x="Log Return",y="Frequency")+
+  scale_x_continuous(breaks=seq(-0.5,0.5,0.1),limits=c(-0.5,0.5))
 
 ```
+
+**Logged Daily Distribution**
+```{r logged_daily_distribution, fig.height=10, fig.width=10}
+
+distribution_log_daily <- HPR_daily_long %>% 
+  ggplot(aes(x = LRET))+
+  geom_histogram(binwidth = 0.01, fill="pink")+
+  facet_wrap(~TICKER)+
+  theme_fivethirtyeight()+
+  theme(axis.title=element_text())+
+  labs(title="Daily Log Return Distribution",subtitle="Comparing the Distribution of Monthly and Daily Log Returns",x="Log Return",y="Frequency")+
+  scale_x_continuous(breaks=seq(-0.5,0.5,0.1),limits=c(-0.5,0.5))
+
+```
+
+**Comparing the Returns Distributions**
+```{r logged_returns_comparison, fig.height=7, fig.width=15}
+
+distribution_log_monthly+distribution_log_daily
+
+```
+
+For a better comparison, we compare the monthly and daily logged returns of MSFT::
+
+**MSFT | Log Returns Comparison**
+```{r MSFT_log_returns_distribution, fig.height=10, fig.width=7}
+
+#specifying GE monthly log distribution
+MSFT_log_dist_monthly <- PS1_Monthly %>% 
+  filter(TICKER=="MSFT") %>% 
+  ggplot(aes(x = LRET))+
+  geom_histogram(binwidth = 0.01, fill="orange")+
+  theme_fivethirtyeight()+
+  theme(axis.title=element_text())+
+  labs(title="Monthly Log Return Distribution",subtitle="MSFT | Microsoft Corporation",x="Log Return",y="Frequency")+
+  scale_x_continuous(breaks=seq(-0.5,0.5,0.1),limits=c(-0.5,0.5))
+
+#specifying GE daily log distribution
+MSFT_log_dist_daily <- HPR_daily_long %>% 
+  filter(TICKER=="MSFT") %>% 
+  ggplot(aes(x = LRET))+
+  geom_histogram(binwidth = 0.01, fill="orange")+
+  facet_wrap(~TICKER)+
+  theme_fivethirtyeight()+
+  theme(axis.title=element_text())+
+  labs(title="Daily Log Return Distribution",subtitle="MSFT | Microsoft Corporation",x="Log Return",y="Frequency")+
+  scale_x_continuous(breaks=seq(-0.5,0.5,0.1),limits=c(-0.5,0.5))
+
+#outputting the two distributions
+MSFT_log_dist_monthly/MSFT_log_dist_daily
+
+```
+
+Though the daily returns distributions above appear to be more normally distributed than those for monthly returns, due to their regular narrow "bell" shape, since there are comparatively many observations at each extreme, the daily log returns distribution is too leptokurtic (kurtosis is too high) to be normally distributed. Thus, as concluded in Question 8, monthly returns (whether logged or not) better approximate the normal distribution than daily returns. This implies that the normal distribution assumption is more likely to hold for lower frequency returns, such as monthly, rather than daily, returns. 
+
+# QUESTION 10
 
 > 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to pick three random stocks). You will need the holding period returns (both normal and log returns) and the total return indices you created.
 
-```{r}
-#Importing the daily price dataset
-stocks_RET <- PS1_Daily_longer %>% 
-  filter(TICKER == "MSFT"|
-         TICKER == "GE"|
-         TICKER == "JPM") %>% 
-  select(1,4,5) 
+We prepare the stocks data including: (I) holding period returns (RET); (II) log holding period returns (LRET); (III) total returns (TR_RET); (IV) total log returns (TR_LRET); (V) total returns from exp(log) (TR_RETEXP); and (VI) squared log returns (SQ_LRET).
 
-#RET for stocks
-stocks_RET_wider <- stocks_RET %>%  
-  pivot_wider(names_from = "TICKER",
-              values_from = "RET") %>% 
-  select(-1)
+```{r preparing_the_stocks}
 
-#RET squared for stocks
-stocks_RET_squared <-stocks_RET %>% 
-  mutate(RET_squared = RET^2) %>%  # mutate RET_squared 
-  select(-3) %>%  #delete unnecessary column: RET
-  pivot_wider(names_from = "TICKER",
-              values_from = "RET_squared") %>% 
-  select(-1) #delete the date column
-
-#daily total return index
-MSFT_daily <-PS1_Daily_longer %>% 
+#we select MSFT, GE and JPM and create a dataframe including HPR, LRET and TR_RET (total return), calculated by summing logged returns
+stocks <- HPR_daily_long %>% 
+  filter(TICKER == "GE"|
+         TICKER == "JPM"|
+         TICKER == "MSFT"|
+         TICKER == "SPRTRN") %>% 
   group_by(TICKER) %>% 
-  filter(TICKER=="MSFT") %>% 
-  mutate(TR_RET_MSFT = cumprod(1*(1+RET)))
-
-GE_daily <-PS1_Daily_longer %>% 
-  group_by(TICKER) %>% 
-  filter(TICKER=="GE") %>% 
-  mutate(TR_RET_GE = cumprod(1*(1+RET)))
-
-SP500_daily <-PS1_Daily_longer %>% 
-  select(1, 3) %>%  #select DATE and SPRTRN
-  distinct() %>% 
-  mutate(total_return = cumprod(1*(1+SPRTRN)))
-
-
+  mutate(
+    
+    #log total return
+    TR_LRET = cumsum(LRET),
+    #normal total return
+    TR_RET = cumprod(1*(1+RET)),
+    #normal total return calculated from exp(log) - used to double-check that TR_RET is accurate (which it is)
+    TR_RETEXP = exp(TR_LRET),
+    #squared log returns
+    SQ_LRET = log(1+RET)^2
+      
+    ) %>% 
+  select(1,2,3,6,4,5,7,8)
 
 ```
+
+# QUESTION 11
 
 > 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared. Discuss your results briefly.
 
-```{r}
+**Log Returns Covariance Matrix**
+```{r log_cov}
 
-
+stocks %>% 
+  select(1,2,5) %>% 
+  pivot_wider(names_from="TICKER",values_from="LRET") %>% 
+  select(-1) %>% 
+  cov() %>% 
+  round(6)
 
 ```
+
+**Squared Log Returns Covariance Matrix**
+```{r log_sq_cov}
+
+stocks %>% 
+  select(1,2,8) %>% 
+  pivot_wider(names_from="TICKER",values_from="SQ_LRET") %>% 
+  select(-1) %>% 
+  cov() %>% 
+  round(8)
+
+```
+
+The two covariance matrices demonstrate that positive covariance exists between each pair of assets (the three chosen stocks, or the S&P 500) in terms of both log returns and log returns squared, indicating a consistently positive relationship. This means that all 3 selected stocks are likely to move in the same direction as eachother, and as the S&P500, when responding to market conditions. Notably, the covariance of the log return squared matrix is over 1/100 smaller than the corresponding log return matrix, thereby indicating a weaker positive relationship between the returns of each asset. 
+
+Within the 3 stocks picked, JPM has the strongest relationship with S&P 500, and JPM and GE are the most strongly correlated of the stocks, in terms of their logged returns. This implies that, in order to optimally diversify away idiosyncratic risk, a portfolio should not include JPM if it is to include MSFT, GE or S&P500 - and that, of the chosen stocks, MSFT is least correlated in its returns with both the other stocks and thus likely to be the best addition to a diversified portfolio. 
+
+However, we cannot rely fully on these covariances to draw inferences regarding the optimal portfolio. This is because the magnitude of covariance can be heavily skewed whenever the data set includes too many significantly different values: single outliers (which remain present in the logged returns, though to a lesser extent than normal returns) can cause dramatic under or overstatement of the relationship between asset returns. 
+
+# QUESTION 12
 
 > 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns. Discuss the results!
 
-```{r}
+## Monthly (not daily) asset data is used throughout this question, and the ACF is plotted for each of the 3 chosen stocks (MSFT, GE, JPM)
 
+### For MSFT
+```{r MSFT_ACF, fig.height=4, fig.width=4}
 
+#preparing the data for ACF
+MSFT_monthly_ACF <- PS1_Monthly %>% 
+  filter(TICKER=="MSFT") %>% 
+  #date, price, return
+  select(3,9,10) %>% 
+  mutate(
+    
+    #returns squared
+    RET_SQ = RET^2,
+    #absolute returns
+    RET_ABS = abs(RET)
+    
+  )
+
+#I employ a maximum lag covering the full period (25 years = 300 months)
+
+#plotting the ACF for prices
+price_MSFT <- acf(MSFT_monthly_ACF$PRC,lag.max=300,plot=FALSE)
+plot(price_MSFT, main = "ACF of MSFT Monthly Prices") 
+
+#plotting the ACF for returns
+return_MSFT <- acf(MSFT_monthly_ACF$RET,lag.max=300,plot=FALSE)
+plot(return_MSFT, main = "ACF of MSFT Monthly Returns") 
+
+#plotting the ACF for returns squared
+returnsq_MSFT <- acf(MSFT_monthly_ACF$RET_SQ,lag.max=300,plot=FALSE)
+plot(returnsq_MSFT, main = "ACF of MSFT Monthly Returns Squared") 
+
+#plotting the ACF for absolute returns
+absolute_MSFT <- acf(MSFT_monthly_ACF$RET_ABS,lag.max=300,plot=FALSE)
+plot(absolute_MSFT, main = "ACF of MSFT Monthly Absolute Returns") 
 
 ```
+
+### For GE
+
+```{r GE_ACF, fig.height=4, fig.width=4}
+
+#preparing the data for ACF
+GE_monthly_ACF <- PS1_Monthly %>% 
+  filter(TICKER=="GE") %>% 
+  #date, price, return
+  select(3,9,10) %>% 
+  mutate(
+    
+    #returns squared
+    RET_SQ = RET^2,
+    #absolute returns
+    RET_ABS = abs(RET)
+    
+  )
+
+#I employ a maximum lag covering the full period (25 years = 300 months)
+
+#plotting the ACF for prices
+price_GE <- acf(GE_monthly_ACF$PRC,lag.max=300,plot=FALSE)
+plot(price_GE, main = "ACF of GE Monthly Prices") 
+
+#plotting the ACF for returns
+return_GE <- acf(GE_monthly_ACF$RET,lag.max=300,plot=FALSE)
+plot(return_GE, main = "ACF of GE Monthly Returns") 
+
+#plotting the ACF for returns squared
+returnsq_GE <- acf(GE_monthly_ACF$RET_SQ,lag.max=300,plot=FALSE)
+plot(returnsq_GE, main = "ACF of GE Monthly Returns Squared") 
+
+#plotting the ACF for absolute returns
+absolute_GE <- acf(GE_monthly_ACF$RET_ABS,lag.max=300,plot=FALSE)
+plot(absolute_GE, main = "ACF of GE Monthly Absolute Returns") 
+
+```
+
+### For JPM
+
+```{r JPM_ACF, fig.height=4, fig.width=4}
+
+#preparing the data for ACF
+JPM_monthly_ACF <- PS1_Monthly %>% 
+  filter(TICKER=="JPM") %>% 
+  #date, price, return
+  select(3,9,10) %>% 
+  mutate(
+    
+    #returns squared
+    RET_SQ = RET^2,
+    #absolute returns
+    RET_ABS = abs(RET)
+    
+  )
+
+#I employ a maximum lag covering the full period (25 years = 300 months)
+
+#plotting the ACF for prices
+price_JPM <- acf(JPM_monthly_ACF$PRC,lag.max=300,plot=FALSE)
+plot(price_JPM, main = "ACF of JPM Monthly Prices") 
+
+#plotting the ACF for returns
+return_JPM <- acf(JPM_monthly_ACF$RET,lag.max=300,plot=FALSE)
+plot(return_JPM, main = "ACF of JPM Monthly Returns") 
+
+#plotting the ACF for returns squared
+returnsq_JPM <- acf(JPM_monthly_ACF$RET_SQ,lag.max=300,plot=FALSE)
+plot(returnsq_JPM, main = "ACF of JPM Monthly Returns Squared") 
+
+#plotting the ACF for absolute returns
+absolute_JPM <- acf(JPM_monthly_ACF$RET_ABS,lag.max=300,plot=FALSE)
+plot(absolute_JPM, main = "ACF of JPM Monthly Absolute Returns") 
+
+```
+
+Autocorrelation indicates the degree of correlation of the same variables between two successive time intervals. The plots above have lag numbers on the x-axis and degree of ACF on the y-axis, demonstrating different levels of autocorrelation between time series data when the lag is set to different values (with a maximum value of 300 months).
+
+**ACF for Price**
+Evidently, MSFT and GE stocks demonstrate a similar price ACF, by which, the longer the lagged period, the lower the autocorrelation - until the autocorrelation becomes negative (due to the boom and bust cyles of markets). Subsequently, as the period lag increases further, the price becomes totally uncorrelated with the initial time interval, which is to be expected as such large time lags result in the accumulation of unpredictable and uncorrelated price influences. However, JPM shows a different, more cyclical trend (most likely because its share price performance is more closely correlated with core market drivers), by which the share price cycles between positive and negative autocorrelation as the lagged period increases, with almost no subsequent periods being entirely uncorrelated with the price at the initial time interval. 
+
+**ACF for Returns (Normal, Squared, Absolute)**
+Interestingly, the ACF functions demonstrate how while normal returns do not appear to follow a cyclical pattern, both squared and absolute returns demonstrate considerable cyclicality for all 3 stocks surveyed. For these returns transformations, we find that while autocorrelation falls steeply as the lag increases, after 10-20 lagged periods, there is considerably more regularity and cyclicality in the ACF. 
+
+This indicates that, while normal returns do not follow a particularly regular pattern as the lagged period increases, squared and absolute returns (on the basis of greater cyclicality alternating between positive and negative autocorrelation as the lag increases) demonstrate a far more predictable sequence. Consequently, it appears that squared and absolute returns are far more predictable (especially for consistently periodic stocks like GE) than normal returns or price. 
+
+# QUESTION 13
 
 > 13. Use the three assets and make up a portfolio by assigning arbitrary portfolio weights. What does it imply if you keep the weights fixed over time?
 
-```{r}
 
+Since the portfolio weight of a given asset $\mathbb{X}$ is represented by the value of the asset as a proportion of the value of the entire portfolio, and the asset value fluctuates constantly, by keeping the portfolio weights fixed, we must constantly re-balance our portfolio. 
 
+```{r assigning_portfolio_weights}
+
+MSFT_weight = 0.4
+GE_weight = 0.3
+JPM_weight = 0.3
+
+```
+
+> 14.  Calculate the portfolio returns and use them to calculate the evolution of a $1 investment in the portfolio over the sample period. Plot the result against the evolution of a $1 investment in each of the three stocks. Discuss the result.
+
+Since 'stocks' contains all the required data, we must now manipulate to extract the required total returns.
+
+```{r calculating_portfolio_returns}
+
+#preparing the total returns by stock in wide format
+portfolio_stocks <- stocks %>% 
+  select(1,2,4) %>% 
+  pivot_wider(names_from="TICKER",values_from="TR_RET") %>% 
+  select(1:4)
+
+#creating a new column containing the weighted sum of these total individual stock returns
+PTFOLIO <- portfolio_stocks %>% 
+  mutate(
+    
+    Portfolio = (MSFT*MSFT_weight + GE*GE_weight + JPM*JPM_weight)
+    
+  )
+  
+```
+
+```{r plotting_portfolio_returns, fig.height=7, fig.height=7}
+
+#transforming the dataset from wide to long format again and plotting the results
+PTFOLIO %>% 
+  pivot_longer(cols=c(2:5),names_to="Asset",values_to="TR_RET") %>%
+  
+  #plotting the returns
+  ggplot(aes(x=DATE,y=TR_RET,color=Asset))+
+  geom_line()+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="Portfolio Returns Against Stock Returns", subtitle="The Evolution of a $1 Investment in a Weighted Portfolio of MSFT (0.4), GE (0.3) and JPM (0.3) Against the Underlying Stocks",x="Date",y="Total Return")+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
+  theme(plot.subtitle = element_markdown(), legend.position="top")
 
 ```
 
-> 14.  Calculate the portfolio returns and use them to calculate the evolution of a $ 1 investment in the portfolio over the sample period. Plot the result against the evolution of a $ 1 investment in each of the three stocks. Discuss the result.
+This plot implies that the portfolio composed of a weighted sum of the three stocks has a higher risk-to-reward (Sharpe) ratio, relative to each of the individual stocks.
 
-```{r}
+Indeed, while both GE and JPM have relatively low risk (low variance/volatility) and low reward (with a total return of less than 20x over the period), MSFT has extremely high reward (110x return), at high risk. Contrastingly, the collective portfolio demonstrates considerably lower variance than MSFT stock, while generating approximately half the returns. 
 
+This means that investing in the weighted portfolio is more favourable for risk-averse, return-maximising investors than any of the individual stocks which compose it. 
 
-
-```
+# QUESTION 15
 
 > 15.  Portfolio theory with matrix algebra
 
