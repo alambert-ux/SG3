@@ -264,7 +264,7 @@ print(statistics_monthly)
 
 ```
 
-These distributions demonstrate how the logged returns of key assets such as MSFT and GE are more leptokurtic (with fatter tails) than the normal returns, and more negatively skewed. This is to be expectedm since taking the log of returns adjusts for the effect of a substantial number of positive outliers. Aside from kurtosis and skew (which is represented by the logged mean return being consistently smaller than the normal mean return), the variance of the normal returns and logged returns are similar: the logged return variance being only marginally smaller than the normal return variance, again due to mitgation of the effects of outliers at the positive extreme. 
+These distributions demonstrate how the logged returns of key assets such as MSFT and GE are more leptokurtic (with fatter tails) than the normal returns, and more negatively skewed. This is to be expected since taking the log of returns adjusts for the effect of a substantial number of positive outliers. Aside from kurtosis and skew (which is represented by the logged mean return being consistently smaller than the normal mean return), the variance of the normal returns and logged returns are similar: the logged return variance being only marginally smaller than the normal return variance, again due to mitgation of the effects of outliers at the positive extreme. 
 
 ```{r MSFT_monthly_returns_plot, fig.height=7, fig.width=7}
 
@@ -300,7 +300,7 @@ Prices_daily <- read_xlsx("PS1_Daily.xlsx", sheet = "Prices_daily", skip = 1) %>
 
 ```{r pivoting_data_for_usability}
 
-#privoting prices daily
+#pivoting prices daily
 Prices_daily_long <-Prices_daily %>% 
   pivot_longer(cols = c(2:8),names_to = "TICKER",values_to = "PRC") 
 
@@ -405,6 +405,42 @@ print(statistics_daily)
 > 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to pick three random stocks). You will need the holding period returns (both normal and log returns) and the total return indices you created.
 
 ```{r}
+#Importing the daily price dataset
+stocks_RET <- PS1_Daily_longer %>% 
+  filter(TICKER == "MSFT"|
+         TICKER == "GE"|
+         TICKER == "JPM") %>% 
+  select(1,4,5) 
+
+#RET for stocks
+stocks_RET_wider <- stocks_RET %>%  
+  pivot_wider(names_from = "TICKER",
+              values_from = "RET") %>% 
+  select(-1)
+
+#RET squared for stocks
+stocks_RET_squared <-stocks_RET %>% 
+  mutate(RET_squared = RET^2) %>%  # mutate RET_squared 
+  select(-3) %>%  #delete unnecessary column: RET
+  pivot_wider(names_from = "TICKER",
+              values_from = "RET_squared") %>% 
+  select(-1) #delete the date column
+
+#daily total return index
+MSFT_daily <-PS1_Daily_longer %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="MSFT") %>% 
+  mutate(TR_RET_MSFT = cumprod(1*(1+RET)))
+
+GE_daily <-PS1_Daily_longer %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="GE") %>% 
+  mutate(TR_RET_GE = cumprod(1*(1+RET)))
+
+SP500_daily <-PS1_Daily_longer %>% 
+  select(1, 3) %>%  #select DATE and SPRTRN
+  distinct() %>% 
+  mutate(total_return = cumprod(1*(1+SPRTRN)))
 
 
 
