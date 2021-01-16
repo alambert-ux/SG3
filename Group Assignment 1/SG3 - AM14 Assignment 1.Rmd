@@ -22,17 +22,22 @@ OFFICIAL DEADLINE = 21:00 FRIDAY, 22ND JANUARY 2021
 
 ### DAY 1 (FRIDAY 15TH JANUARY)
 
-TEAM A: Q1-Q12
+TEAM A: Q1-Q12 FINALISATION
 TEAM B: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
 
 ### DAY 2 (SATURDAY 16TH JANUARY)
 
 TEAM A: Q1-Q12 FINALISATION
-TEAM B: Q13-Q15 
+TEAM B: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
 
 ### DAY 3 (SUNDAY 17TH JANUARY)
 
-TEAM A: MACHINE LEARNING INDIVIDUAL ASSIGNMENT
+TEAM A: ASSISTANCE
+TEAM B: Q13-Q15 FINALISATION
+
+### DAY 4 (MONDAY 18TH JANUARY)
+
+TEAM A: ASSISTANCE
 TEAM B: Q13-Q15 FINALISATION
 
 -------------------------
@@ -50,6 +55,7 @@ library(lubridate)
 library(PerformanceAnalytics)
 library(ggthemes)
 library(ggtext)
+library(patchwork)
 
 ```
 
@@ -127,41 +133,60 @@ testing[is.na(testing)] <- 0
 
 ```{r creating_total_RET_indexes}
 
-MSFT <-PS1_Monthly %>% 
+MSFT_monthly <-PS1_Monthly %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="MSFT") %>% 
   mutate(TR_RET = cumprod(1*(1+RET)))
 
-GE <-PS1_Monthly %>% 
+GE_monthly <-PS1_Monthly %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="GE") %>% 
   mutate(TR_RET = cumprod(1*(1+RET)))
 
-SP500 <-PS1_Monthly %>% 
-  mutate(total_return = cumprod(1*(1+sprtrn)))
+SP500_monthly <-PS1_Monthly %>% 
+  group_by(DATE) %>% 
+  unique() %>% 
+  mutate(TR_RET = cumprod(1*(1+sprtrn)))
 
 ```
 
 ```{r creating_total_RETX_indexes}
 
-MSFT <-MSFT %>% 
+MSFT_monthly <-MSFT_monthly %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="MSFT") %>% 
   mutate(TR_RETX = cumprod(1*(1+RETX)))
 
-GE <-GE %>% 
+GE_monthly <-GE_monthly %>% 
   group_by(TICKER) %>% 
   filter(TICKER=="GE") %>% 
   mutate(TR_RETX = cumprod(1*(1+RETX)))
 
 ```
 
-```{r plotting_total_return_indexes, fig.height=7, fig.width=7}
+```{r plotting_monthly_total_return_indexes}
+
+#(monthly) plotting MSFT and GE in comparison to each other and SP500
+monthly_returns <- ggplot()+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RET),color="orange")+
+  geom_line(data=GE_monthly,aes(x=DATE,y=TR_RET),color="purple")+
+  geom_line(data=SP500_monthly,aes(x=DATE,y=TR_RET),color="gray45")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="Monthly Total Returns Comparison", subtitle="Monthly Total Return Index, Normalised to $1 Investment for <span style='color:orange;'>MSFT</span>, <span style='color:purple;'>GE</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
+  theme(plot.subtitle = element_markdown())
+
+monthly_returns
+
+```
+
+```{r plotting_monthly_total_return_indexes_dividends, fig.height=7, fig.width=7}
 
 #for MSFT both with and without dividends
 ggplot()+
-  geom_line(data=MSFT,aes(x=DATE,y=TR_RET),color="red")+
-  geom_line(data=MSFT,aes(x=DATE,y=TR_RETX),color="blue")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RET),color="red")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=TR_RETX),color="blue")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
   labs(title="MSFT | Microsoft Corporation", subtitle="Monthly Total Return Index, Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10))+
@@ -170,8 +195,8 @@ ggplot()+
 
 #for GE both with and without dividends
 ggplot()+
-  geom_line(data=GE,aes(x=DATE,y=TR_RET),color="red")+
-  geom_line(data=GE,aes(x=DATE,y=TR_RETX),color="blue")+
+  geom_line(data=GE_monthly,aes(x=DATE,y=TR_RET),color="red")+
+  geom_line(data=GE_monthly,aes(x=DATE,y=TR_RETX),color="blue")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
   labs(title="GE | General Electric Company", subtitle="Monthly Total Return Index Normalised to $1 Investment, <span style='color:red;'>Including Dividends</span> and <span style='color:blue;'>Excluding Dividends</span> </span>",x="Date",y="Total Return")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,16,by=2), limits=c(0,16))+
@@ -188,16 +213,16 @@ Thus, arguably dividends have a greater effect on total returns across the full 
 
 > 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
 
-```{r normalizing_GE_price, fig.height=5, fig.width=5}
+```{r normalizing_monthly_GE_price, fig.height=7, fig.width=7}
 
 #normalizing the price by adjusting for number of shares
-GE <- GE %>% 
+GE_monthly <- GE_monthly %>% 
   mutate(PRC_norm = PRC/CFACPR)
 
 #plotting the adjusted prices against the unadjusted prices
 ggplot()+
-  geom_line(data=GE,aes(x=DATE,y=PRC),color="red")+
-  geom_line(data=GE,aes(x=DATE,y=PRC_norm),color="blue")+
+  geom_line(data=GE_monthly,aes(x=DATE,y=PRC),color="red")+
+  geom_line(data=GE_monthly,aes(x=DATE,y=PRC_norm),color="blue")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
   labs(title="GE | General Electric Company", subtitle="<span style='color:red;'>Nominal Price</span> and <span style='color:blue;'>Share-Adjusted Price</span> </span>",x="Date",y="Price")+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
@@ -210,16 +235,11 @@ Reviewing the relationship between GE's nominal and adjusted share prices, it is
 
 > 5.  The holding period returns are normal returns. Generate a new variable that contains the corresponding log returns (LRET). Calculate the mean, variance, skewness, and kurtosis of the normal and the log returns. Plot the normal against the log returns for MSFT. Briefly discuss your results!
 
-```{r log_returns}
+```{r log_monthly_returns}
 
 #creating the log returns variable, LRET = ln(1+RET) = ln(PRC/lag(PRC))
 PS1_Monthly <- PS1_Monthly %>% 
     mutate(LRET=log(1+RET)) 
-
-#(further) adding the total returns LRET series for MSFT
-MSFT <-MSFT %>% 
-  mutate(LRET=log(1+RET)) %>% 
-  mutate(TR_LRET = cumsum(1*(1+LRET)))
 
 #calculating the mean, variance, skewness, and kurtosis of the normal (RET) and the log (LRET) returns
 statistics_monthly <- PS1_Monthly %>% 
@@ -246,12 +266,16 @@ print(statistics_monthly)
 
 These distributions demonstrate how the logged returns of key assets such as MSFT and GE are more leptokurtic (with fatter tails) than the normal returns, and more negatively skewed. This is to be expectedm since taking the log of returns adjusts for the effect of a substantial number of positive outliers. Aside from kurtosis and skew (which is represented by the logged mean return being consistently smaller than the normal mean return), the variance of the normal returns and logged returns are similar: the logged return variance being only marginally smaller than the normal return variance, again due to mitgation of the effects of outliers at the positive extreme. 
 
-```{r MSFT_returns_plots, fig.height=5, fig.width=5}
+```{r MSFT_monthly_returns_plot, fig.height=7, fig.width=7}
+
+#(further) adding the total returns LRET series for MSFT
+MSFT_monthly <-MSFT_monthly %>% 
+  mutate(LRET=log(1+RET))
 
 #plotting normal and log returns for MSFT
 ggplot()+
-  geom_line(data=MSFT,aes(x=DATE,y=RET),color="red")+
-  geom_line(data=MSFT,aes(x=DATE,y=LRET),color="blue")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=RET),color="red")+
+  geom_line(data=MSFT_monthly,aes(x=DATE,y=LRET),color="blue")+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
   labs(title="MSFT | Microsoft Corporation", subtitle="<span style='color:red;'>Normal Returns</span> and <span style='color:blue;'>Log Returns</span> </span>",x="Date",y="Return")+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
@@ -278,71 +302,107 @@ Prices_daily <- read_xlsx("PS1_Daily.xlsx", sheet = "Prices_daily", skip = 1) %>
 
 #privoting prices daily
 Prices_daily_long <-Prices_daily %>% 
-  pivot_longer(cols = c(2:7),names_to = "TICKER",values_to = "PRC") %>% 
-  select(1,3,4,2)
+  pivot_longer(cols = c(2:8),names_to = "TICKER",values_to = "PRC") 
 
 #pivoting holding period returns
 HPR_daily_long <-HPR_daily %>% 
-  pivot_longer(cols = c(2:7),names_to = "TICKER",values_to = "HPR") %>% 
-  select(1,4,5,3,2)
+  pivot_longer(cols = c(2:9),names_to = "TICKER",values_to = "HPR")
 
 ```
 
-> 7.  Construct a daily total return index for MSFT and GE stocks and the S&P 500 index and plot them against each other. Compare your results with the monthly total return indices from above. Are there any differences? Discuss.
+> 7. Construct a daily total return index for MSFT and GE stocks and the S&P 500 index and plot them against each other. Compare your results with the monthly total return indices from above. Are there any differences? Discuss.
 
-```{r}
+```{r creating_daily_total_RET_indexes}
 
+#creating MSFT daily total return index
+MSFT_daily <-HPR_daily_long %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="MSFT") %>% 
+  mutate(TR_RET = cumprod(1*(1+HPR)))
 
+#creating GE daily total return index
+GE_daily <-HPR_daily_long %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="GE") %>% 
+  mutate(TR_RET = cumprod(1*(1+HPR)))
+    
+#creating SP500 daily total return index
+SP500_daily <-HPR_daily_long %>% 
+  group_by(TICKER) %>% 
+  filter(TICKER=="SPRTRN") %>% 
+  mutate(TR_RET = cumprod(1*(1+HPR)))
+    
+```
+
+```{r plotting_daily_total_return_indexes}
+
+#(daily) plotting MSFT and GE in comparison to each other and SP500
+daily_returns <- ggplot()+
+  geom_line(data=MSFT_daily,aes(x=DATE,y=TR_RET),color="orange")+
+  geom_line(data=GE_daily,aes(x=DATE,y=TR_RET),color="purple")+
+  geom_line(data=SP500_daily,aes(x=DATE,y=TR_RET),color="gray45")+
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(title="Daily Total Returns Comparison", subtitle="Daily Total Return Index, Normalised to $1 Investment for <span style='color:orange;'>MSFT</span>, <span style='color:purple;'>GE</span> and the <span style='color:gray45;'>S&P500</span> </span>",x="Date",y="Total Return")+
+  scale_x_date(date_breaks="2 years",date_labels="%Y")+
+  scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
+  theme(plot.subtitle = element_markdown())
+
+daily_returns
 
 ```
+
+```{r plotting_total_return_indexes, fig.height=10, fig.width=20}
+
+#plotting the two alongside one another
+daily_returns+monthly_returns
+
+```
+
+Comparing the daily and monthly total return indexes shown above, it is clear that each asset demonstrates effectively identical trends over the course of the period. However, volatility is evidently (and expectedly) higher in daily returns than monthly returns, and due to the 
+
+has the greatest impact on the S&P500. 
+
 
 > 8. As before, the holding period returns are normal returns. Create log returns. Calculate the mean, variance, skewness, and kurtosis of the normal and log returns. Compare and discuss your results with the results from monthly frequency
 
-```{r}
+```{r log_daily_returns}
 
+#creating the log returns variable, LRET = ln(1+RET) = ln(PRC/lag(PRC))
+HPR_daily_long <-HPR_daily_long %>% 
+  mutate(LRET=log(1+HPR))
 
+#calculating the mean, variance, skewness, and kurtosis of the normal (RET) and the log (LRET) returns
+statistics_daily <- HPR_daily_long %>% 
+    group_by(TICKER) %>% 
+  
+#using the library(PerformanceAnalytics) to calculate the statistics
+    summarise(
+      
+      mean_normal = mean(HPR),
+      variance_normal = var(HPR),
+      skewness_normal = skewness(HPR),
+      kurtosis_normal = kurtosis(HPR),
+      
+      mean_log = mean(LRET),
+      variance_log = var(LRET),
+      skewness_log = skewness(LRET), 
+      kurtosis_log = kurtosis(LRET)
+      
+      )
 
-```
-
-> 9.  Compare the statistical properties of the log holding period return time series both for monthly and
-daily returns. Plot a histogram and discuss how the empirical distributions relate to the normal
-distribution.
-
-```{r}
-
-
-```
-
-> 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to
-pick three random stocks). You will need the holding period returns (both normal and log returns)
-and the total return indices you created.
-
-```{r}
-
-
-
-```
-
-> 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared.
-Discuss your results briefly.
-
-```{r}
-
-
+print(statistics_daily)
 
 ```
 
-> 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns.
-Discuss the results!
+
+> 9.  Compare the statistical properties of the log holding period return time series both for monthly and daily returns. Plot a histogram and discuss how the empirical distributions relate to the normal distribution.
 
 ```{r}
 
 
-
 ```
 
-> 13. Use the three assets and make up a portfolio by assigning arbitrary portfolio weights. What does it
-imply if you keep the weights fixed over time?
+> 10.  Pick three stocks and the S&P 500 index (either you can use MSFT, GE and JPM or adapt the code to pick three random stocks). You will need the holding period returns (both normal and log returns) and the total return indices you created.
 
 ```{r}
 
@@ -350,9 +410,31 @@ imply if you keep the weights fixed over time?
 
 ```
 
-> 14.  Calculate the portfolio returns and use them to calculate the evolution of a $ 1 investment in the
-portfolio over the sample period. Plot the result against the evolution of a $ 1 investment in each of
-the three stocks. Discuss the result.
+> 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared. Discuss your results briefly.
+
+```{r}
+
+
+
+```
+
+> 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns. Discuss the results!
+
+```{r}
+
+
+
+```
+
+> 13. Use the three assets and make up a portfolio by assigning arbitrary portfolio weights. What does it imply if you keep the weights fixed over time?
+
+```{r}
+
+
+
+```
+
+> 14.  Calculate the portfolio returns and use them to calculate the evolution of a $ 1 investment in the portfolio over the sample period. Plot the result against the evolution of a $ 1 investment in each of the three stocks. Discuss the result.
 
 ```{r}
 
