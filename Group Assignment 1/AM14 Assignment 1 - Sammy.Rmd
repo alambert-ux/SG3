@@ -189,7 +189,7 @@ Prices_daily <- read_xlsx("PS1_Daily.xlsx", sheet = "Prices_daily", skip = 1) %>
 
 ```{r pivoting_data_for_usability}
 
-#privoting prices daily
+#pivoting prices daily
 Prices_daily_long <-Prices_daily %>% 
   pivot_longer(cols = c(2:7),names_to = "TICKER",values_to = "PRC") %>% 
   select(1,3,4,2)
@@ -304,8 +304,9 @@ From the histograms of log returns of different holding periods, we can see that
 pick three random stocks). You will need the holding period returns (both normal and log returns)
 and the total return indices you created.
 
-```{r}
-#creating matrix for holding period returns
+```{r stock_picking_and_indices_preparation}
+#Here we pick MSFT, GE and JPM
+#Create matrix for normal holding period returns
 stocks_RET <- HPR_daily_long %>% 
   filter(TICKER == "MSFT"|
          TICKER == "GE"|
@@ -319,20 +320,21 @@ stocks_RET_wider <- stocks_RET %>%
   select(-1)
 #matrix of normal returns for MSFT, GE, JPM and S&P500
 stocks_RET_wider <- cbind(stocks_RET_wider, HPR_daily$SPRTRN)
+colnames(stocks_RET_wider )[4] <- "S&P 500"
 
-#creating matrix for log returns
+
+#Create matrix for log returns
 stocks_LRET <- HPR_daily_long %>% 
   filter(TICKER == "MSFT"|
          TICKER == "GE"|
          TICKER == "JPM") %>% 
   select(1,2,6) 
  
-#mutate log returns for S&P 500
+#mutate log returns and log returns squared for S&P 500
 HPR_daily <- HPR_daily %>% 
   mutate(Log_SPRTRN = log(1+SPRTRN),
          Log_SPRTRN_squared = (log(1+SPRTRN))^2)
-
-
+#RET for stocks
 stocks_LRET_wider <- stocks_LRET %>%  
   pivot_wider(names_from = "TICKER",
               values_from = "LRET") %>% 
@@ -340,6 +342,8 @@ stocks_LRET_wider <- stocks_LRET %>%
 
 #matrix of log returns for MSFT, GE, JPM and S&P500
 stocks_LRET_wider <- cbind(stocks_LRET_wider, HPR_daily$Log_SPRTRN)
+colnames(stocks_LRET_wider)[4] <- "S&P 500"
+
 
 #daily total return index
 MSFT_daily <- HPR_daily_long %>% 
@@ -357,8 +361,7 @@ SP500_daily <-HPR_daily_long %>%
   distinct() %>% 
   mutate(total_return = cumprod(1*(1+SPRTRN)))
 
-
-#RET squared for stocks
+#create RET squared for stocks
 stocks_RET_squared <-stocks_RET %>%
   mutate(RET_squared = HPR^2) %>%  # mutate RET_squared
   select(-3) %>%  #delete unnecessary column: HPR
@@ -366,17 +369,7 @@ stocks_RET_squared <-stocks_RET %>%
               values_from = "RET_squared") %>%
   select(-1) #delete the date column
 
-
-```
-
-> 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared.
-Discuss your results briefly.
-
-```{r}
-#print the covariance matrix for the log return series, using the log returns
-print(cov(stocks_LRET_wider))
-
-#create the log return squared matrix
+#create the log return squared 
 stocks_LRET_squared <- stocks_LRET %>% 
   mutate(LRET_squared = LRET^2) %>%  # mutate LRET_squared 
   select(-3) %>%  #delete unnecessary column: LRET
@@ -384,15 +377,29 @@ stocks_LRET_squared <- stocks_LRET %>%
               values_from = "LRET_squared") %>% 
   select(-1) #delete the date column
 
+```
+
+> 11.  Calculate the covariance matrix for the log return series, using both the returns and returns squared.
+Discuss your results briefly.
+
+```{r calculating_covariance_matrix}
+#print the covariance matrix for the log return series, using the returns
+print(cov(stocks_LRET_wider))
+
 #create log return squared for S&P 500
 stocks_LRET_squared <- cbind(stocks_LRET_squared, HPR_daily$Log_SPRTRN_squared)
+colnames(stocks_LRET_squared)[4] <- "S&P 500"
 
 #print the covariance matrix for the log return series, using the log returns squared
 print(cov(stocks_LRET_squared))
 
 ```
 
-Comments: xxxxxxxxxxxxx to be added 
+The two covariance matrices demonstrate that positive covariance exists between each pair of stocks(or S&P 500) in terms of both log returns and log returns squared, indicating the positive relationship between each stock(or S&P 500). This means that all 3 stocks picked are likely to move in the same direction when responding to market conditions. 
+
+The covariance of log return squared matrix is about over 1/100 smaller than the corresponding log return matrix, which seems to indicate the weaker relationship. However, the smaller covariance sometimes cannot reveal the weaker strength of the connection whenever the data set contains too many significantly different values. In reality, squared return are most used method for forecasting volatility in GARCH/ARCH modelling.
+
+Within the 3 stocks picked, JPM has the strongest relationship with S&P 500.
 
 > 12. Plot the ACF (autocorrelation function) for prices, returns, returns squared, and absolute returns.
 Discuss the results!
@@ -488,8 +495,18 @@ plot(RETX_MSFT, main = "ACF of MSFT monthly absolute return")
 
 RETX_GE_data <- stocks_monthly_RETX %>% 
   filter(TICKER == "GE")
+RETX_GE <- acf(RETX_GE_data$RETX, plot = FALSE)
+RETX_GE
+plot(RETX_GE, main = "ACF of GE monthly absolute return") 
 
 RETX_JPM_data <- stocks_monthly_RETX %>% 
   filter(TICKER == "JPM")
+RETX_JPM <- acf(RETX_JPM_data$RETX, plot = FALSE)
+RETX_JPM
+plot(RETX_JPM, main = "ACF of JPM monthly absolute return") 
 
 ```
+Autocorrelation indicates the degree of correlation of the same variables between two successive time intervals.
+The plots above have lag numbers on the x-axis and degree of ACF on the y-axis, demonstrating different levels of autocorrelation between time series data when lag is set to different numbers.
+Prices are strongly autocorrelated in the case of each stock picked, in the lag range of integers belonging to [0, 37], which is shown on the first 3 graphs. Log returns, normal returns or abstract returns do not seem to hold any obvious pattern of autocorrelation while log returns squared (or normal return squared) time series numbers are autocorrelated with the ACF of roughly above or below 0.2 in each of the three cases. Log returns squared display a similar pattern but slightly stronger autocorrelation level than the normal returns squared ones across MSFT, GE and JPM.
+Within the 3 stocks, GM has the highest auto correlation in prices, (log) returns squared. This could be intepreted as the lagged version of the value of GE's stock performance is the best related to the original version of it in the given time series.
