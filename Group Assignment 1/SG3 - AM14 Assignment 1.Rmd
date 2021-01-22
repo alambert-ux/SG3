@@ -440,7 +440,7 @@ daily_returns_MSFT <- ggplot()+
 
 ```
 
-**Plotting the Index for MSFT**
+**Plotting the Index for GE**
 ```{r plotting_daily_total_return_index_GE, fig.height=10, fig.width=10}
 
 #(daily) plotting MSFT and GE in comparison to each other and SP500
@@ -689,7 +689,6 @@ plot(absolute_MSFT, main = "ACF of MSFT Monthly Absolute Returns")
 ```
 
 ### For GE
-
 ```{r GE_ACF, fig.height=4, fig.width=4}
 
 #preparing the data for ACF
@@ -838,53 +837,878 @@ This means that investing in the weighted portfolio is more favourable for risk-
 
 > 15.  Portfolio theory with matrix algebra
 
-```{r}
+**Note: due to the defined sample period of 02/01/1990 - 31/12/2002, this period is utilised throughout Q15.**
 
+> 15.1 Calculate the means, the variance and the pairwise covariances for the three stocks MSFT, GE, and JPM for the sample period between 2/1/1990 and 31/12/2002.
+
+For clarity, we return to the core HPR_daily dataset and do not use any previously defined dataframes.
+
+```{r mean_variance}
+
+#creating a new dataframe from HPR_daily which contains only the selected stocks, filtered for the stated date range
+stocks_HPR <- HPR_daily %>% 
+  select (DATE, MSFT, GE, JPM) %>%
+  filter (DATE >= as.Date("1990-01-02") & DATE <= as.Date("2012-12-31"))
+
+#creating the requested summary data frame
+stock_summary <- stocks_HPR %>% 
+  
+  #removing the date column
+  select(-DATE) %>% 
+  
+  #pivoting the data into long format
+  pivot_longer(1:3, names_to="TICKER", values_to="RET") %>% 
+  
+  #grouping the returns data by TICKER
+  group_by(TICKER) %>% 
+  
+  #calculating summary statistics
+  summarise (mean_return = round(mean(RET),6), variance_return = round(var(RET),6))
+
+#printing the stock summary
+stock_summary
+
+```
+
+```{r covariance}
+
+#obtaining all the pairwise covariances efficiently, via a covariance matrix
+covariance_matrix <- round(var(
+  
+  stocks_HPR %>% 
+    select(-DATE)
+  
+  ),6)
+
+covariance_matrix
+
+#printing each of the pairwise covariances
+
+paste0("The pairwise covariance between MSFT and GE is ", covariance_matrix[1,2])
+
+paste0("The pairwise covariance between MSFT and JPM is ", covariance_matrix[1,3])
+
+paste0("The pairwise covariance between GE and JPM is ", covariance_matrix[2,3])
+
+```
+ 
+> 15.2 Define the following matrices that contain returns, expected returns, portfolio weights, and covariances:
+
+## Returns/Expected Returns Matrix
+
+We are asked to generate a matrix containing returns and a matrix containing expected returns, but these are the same matrices (containing the mean historical returns of the stocks). Therefore, I generate a single matrix for expected returns (mu). 
+
+```{r matrix_returns-matrix_expected_returns}
+
+mu <- matrix(
+  
+  c(
+    #specifying the 3 means to be taken from the date-filtered, wide-format stocks_HPR data frame
+    mean(stocks_HPR$MSFT), 
+    mean(stocks_HPR$GE), 
+    mean(stocks_HPR$JPM)
+    
+    ), 
+  
+  #specifying the number of columns and number of rows in the matrix object
+  ncol=1, nrow=3)
+
+#printing the returns/expected returns matrix, mu
+mu
+
+```
+
+## (Equal) Portfolio Weights Matrix
+
+```{r matrix_portfolio_equal_weights}
+
+#since this portfolio is the equal weights portfolio, I call this weights matrix 'e'
+e <- matrix(
+  
+  c(
+    
+    #MSFT weight
+    1/3, 
+    #GE weight
+    1/3,
+    #JPM weight
+    1/3), 
+  
+  ncol=1, nrow=3)
+
+```
+
+## Covariance Matrix
+
+```{r matrix_covariances}
+
+#since we already generated the covariance matrix in Q15.a, I simply rename this matrix to 'sigma' accordingly
+sigma <- covariance_matrix
+
+```
+
+> 15.3 Calculate the return and standard deviation of a portfolio where you equal-weight the three stocks - call the portfolio e. Additionally, consider a portfolio y with a weight vector y’ = (0.8, 0.4, −0.2). Calculate the risk-return tradeoff of y as well as its covariance with portfolio e.
+
+## Equal Weight Portfolio
+
+**Return of an Equal Weight Portfolio**
+The formula provided tells us that the expected return of a given portfolio is obtained by the dot product of: (i) the transposed portfolio weights matrix (x transposed) and (ii) mu, the expected returns matrix. In this case, the portfolio is the equal weights portfolio, meaning that the portfolio weights matrix is represented by 'e'. 
+
+```{r return_equal_weight_PTFOLIO}
+
+return_equal_weight <- 
+  
+  #this simple formulation finds the dot product (%*%) of the transposed e (equal portfolio weights) matrix with the expected returns matrix, mu
+  t(e) %*% mu
+
+return_equal_weight
+
+```
+
+**Risk of an Equal Weight Portfolio**
+The formula provided tells us that the expected risk of a given portfolio (the historical standard deviation) is given by the square root of the variance of the portfolio, which is obtained by the dot product of: (i) the transposed portfolio weights matrix (x transposed) and (ii) the dot product of (ii.i) sigma, the covariance matrix, and (ii.ii) x, the portfolio weights matrix (x). In this case, the portfolio is the equal weights portfolio, meaning that the portfolio weights matrix is represented by 'e'. 
+
+```{r risk_equal_weight_PTFOLIO}
+
+risk_equal_weight <- 
+  
+  #by applying the sqrt function, I obtain the standard deviation (risk) from the variance
+  sqrt(
+    
+    #this formulation finds the variance: the dot product (%*%) of the transposed portfolio weights matrix with the dot product of the covariance matrix and the portfolio weights matrix
+    t(e) %*% (sigma %*% e)
+    
+    )
+
+risk_equal_weight
+
+```
+
+## Unequal Weight Portfolio
+
+```{r matrix_portfolio_un-equal_weights}
+
+#since this portfolio is the un-equal weights portfolio, I call this weights matrix 'y'
+y <- matrix(
+  
+  c(
+    
+    #MSFT weight
+    0.8, 
+    #GE weight
+    0.4,
+    #JPM weight
+    -0.2), 
+  
+  ncol=1, nrow=3)
+
+```
+
+**Return of an Un-Equal Weight Portfolio**
+I apply the same formula as above. However, in this case, the portfolio is the un-equal weights portfolio, meaning that the portfolio weights matrix is represented by 'y'. 
+
+```{r return_equal_weight_PTFOLIO}
+
+return_unequal_weight <- 
+  
+  #this simple formulation finds the dot product (%*%) of the transposed e (equal portfolio weights) matrix with the expected returns matrix, mu
+  t(y) %*% mu
+
+return_unequal_weight
+
+```
+
+**Risk of an Un-Equal Weight Portfolio**
+I apply the same formula as above. However, in this case, the portfolio is the un-equal weights portfolio, meaning that the portfolio weights matrix is represented by 'y'. 
+
+```{r risk_equal_weight_PTFOLIO}
+
+risk_unequal_weight <- 
+  
+  #by applying the sqrt function, I obtain the standard deviation (risk) from the variance
+  sqrt(
+    
+    #this formulation finds the variance: the dot product (%*%) of the transposed portfolio weights matrix with the dot product of the covariance matrix and the portfolio weights matrix
+    t(y) %*% (sigma %*% y)
+    
+    )
+
+risk_unequal_weight
+
+```
+
+## Portfolio Risk-Return Trade-Offs and Covariance
+
+**The Risk-Return Trade-Off of the Portfolios**
+The risk-return trade-off of an asset or portfolio is summarised by the Sharpe Ratio: $$Sharpe \ Ratio = \frac{Mean \ Return}{Standard \ Deviation}$$. Therefore, I calculate the Sharpe Ratio for each portfolio (the first, defined by equal weights, e - and the second, defined by unequal weights, y).
+
+```{r sharpe_portfolios}
+
+#calculating the sharpe ratio for portfolio e
+sharpe_equal_weight <- return_equal_weight/risk_equal_weight
+
+#calculating the sharpe ratio for portfolio y
+sharpe_unequal_weight <- return_unequal_weight/risk_unequal_weight
+
+#printing the risk-return trade-offs
+paste0("The risk-return trade-off (Sharpe Ratio) of the equal weights portfolio 'e' is ", sharpe_equal_weight)
+paste0("The risk-return trade-off (Sharpe Ratio) of the unequal weights portfolio 'y' is ", sharpe_unequal_weight)
+
+```
+
+**The Covariance Between the Two Portfolios**
+
+The formula provided indicates that the covariance of the portfolio is obtained by the dot product of: (i) the first portfolio weights matrix (e or y) and (ii) the dot product of (ii.i) sigma, the covariance matrix, and (ii.ii) the second portfolio weights matrix (e or y).
+
+
+```{r covariance_portfolios}
+
+#calculating the covariance between the two portfolios (an equal weights and unequal weights portfolio consisting of the same underlying assets: MSFT, GE, JPM)
+PTFOLIO_covariance <- t(e) %*% (sigma %*% y)
+
+#printing the covariance between the two portfolios
+paste0("The covariance between the two portfolios is ", PTFOLIO_covariance)
 
 
 ```
 
-> 15.a Calculate the means, the variance and the pairwise covariances for the three stocks MSFT, GE, and
-JPM for the sample period between 2/1/1990 and 31/12/2002.
+> 15.4 In order to find the global minimum variance portfolio with weights m’ = (mMSF T , mGE, mJPM ), we have to minimise variance subject to the portfolio weights summing to 1. Calculate the variance and the expected return of the minimum variance portfolio.
 
-> 15.b Define the following matrices that contain returns, expected returns, portfolio weights, and covariances:
+## Finding the Minimum Variance Portfolio (Weights)
 
-> 15.c Note that the expected portfolio return and variance equal:
+The question provides us with the solution for the global minimum variance portfolio: $$A_mz_m = b$$ with the solution $$z_m = A^{-1}_mb$$, where $$A = \begin{pmatrix}
+  2\sigma^{2}_{MSFT} & 2\sigma_{MSFT,GE} & 2\sigma_{MSFT,JPM} & 1 \\
+  2\sigma_{GE,MSFT} & 2\sigma^{2}_{GE} & 2\sigma_{GE,JPM} & 1 \\
+  2\sigma_{JPM,MSFT} & 2\sigma_{JPM,GE} & 2\sigma^{2}_{JPM} & 1 \\
+  1 & 1 & 1 & 0
+ \end{pmatrix}$$
+ 
+ and $$b = \begin{pmatrix}
+  0 \\
+  0 \\
+  0 \\
+  1
+ \end{pmatrix}$$
+ 
+ **Defining Matrix A**
+ Thus, we focus on defining $$A$$, such that we can obtain the dot product of the inverse of this matrix with matrix $b$ in order to obtain the solution $z$. 
 
-> 15.d Calculate the return and standard deviation of a portfolio where you equal-weight the three stocks
-- call the portfolio e. Additionally, consider a portfolio y with a weight vector y’ = (0.8, 0.4, −0.2).
-Calculate the risk-return tradeoff of y as well as its covariance with portfolio e.
+```{r define_A}
 
-> 15.e In order to find the global minimum variance portfolio with weights m’ = (mMSF T , mGE, mJPM ),
-we have to solve the following problem
+#multiplying the sigma (covariance matrix) by 2 as the equation shows
+A <- 2*sigma
 
-> 15.f Find another efficient portfolio. Namely, the efficient portfolio that gives a return equal to the
-expected return of MSFT. Note, that your minimization problem now becomes:
+#creating the 4th column
+A <- cbind(A, c(1,1,1))
 
-> 15.g Derive the solution as above in terms of portfolio weights and calculate them in your code. In
-addition, calculate the expected return and the variance of efficient portfolio x as well as its
-covariance with the global minimum portfolio.
+#creating the 4th row
+A <- rbind(A, c(1,1,1,0))
 
-> 15.h Plot the entire efficient frontier for the three risky assets.
+#printing the matrix to ensure it is correct (which we find it is)
+A
 
-> 15.i Now, rerun your code with sample moments for the three stocks MSFT, GE, and JPM for the sample
-period between 2/1/2003 and 31/12/2014.
+```
 
-> 15.j Finally, compare your results for the three assets across the two sample periods. Comment on
-potential problems that might arise when you based investment decisions on your analysis. Also
-discuss potential solutions to the problems mentioned.
+**Defining Matrix b**
+We now define $$b$$, which is the final matrix we require to solve for $$z$$
+
+```{r define_b}
+
+#b, a single column matrix, is defined much more simply, using the matrix function
+
+b <- matrix(
+  
+  c(
+    
+    0,
+    0,
+    0,
+    1
+    
+    ), 
+  
+  ncol=1)
+
+#printing the matrix to ensure it is correct (which we find it is)
+b
+
+```
+
+**Solving for Matrix z**
+
+```{r solve_for_z}
+
+#we find that the function 'solve()' generates the inverse of a matrix
+
+#thus, we calculate z by taking dot product of the inverse of matrix A with matrix b
+z <- solve(A) %*% b
+
+#we check that z has the expected form (portfolio weights for each underlying asset, and an unlabelled lambda term), which it does
+z
+
+```
+
+As stated in the assignment, the first three elements of $$z$$ are the portfolio weights $$m$$ for the global minimum variance portfolio:
+
+$$z = \begin{pmatrix}
+  m_{MSFT} \\
+  m_{GE}  \\
+  m_{JPM}  \\
+  \lambda
+ \end{pmatrix}$$
+
+I therefore extract and transpose these weights, m, from the $$z$$ matrix, discarding the $$\lambda$$ term. 
+
+```{r extracting_weights}
+
+#I extract the first three rows, and take only the first (names) column
+m <- z[1:3,1]
+
+#this value now contains the portfolio weights for the minimum variance portfolio
+m
+
+```
+
+## Calculating the Variance and Expected Return of the Minimum Variance Portfolio
+
+**Structuring m as a Portfolio Weights Matrix**
+
+```{r portfolio_weights_matrix}
+
+m <- matrix(m, ncol=1)
+
+```
+
+I repeat a process similar to that in Q15.3 to calculate the variance and expected return of the minimum variance portfolio. 
+
+**Expected Return of the Minimum Variance Portfolio**
+The formula provided tells us that the expected return of a given portfolio is obtained by the dot product of: (i) the transposed portfolio weights matrix (x transposed) and (ii) mu, the expected returns matrix. In this case, the portfolio is the minimum variance portfolio, meaning that the portfolio weights matrix is represented by 'm'. 
+
+```{r return_minimum_variance_PTFOLIO}
+
+return_minimum_variance <- 
+  
+  #this simple formulation finds the dot product (%*%) of the transposed m (minimum variance portfolio weights) matrix with the expected returns matrix, mu
+  t(m) %*% mu
+
+#printing the expected return
+paste0("The expected return of the minimum variance portfolio is ", return_minimum_variance)
+
+```
+
+**Variance of the Minimum Variance Portfolio**
+The variance of the portfolio is obtained by the dot product of: (i) the transposed portfolio weights matrix (x transposed) and (ii) the dot product of (ii.i) sigma, the covariance matrix, and (ii.ii) x, the portfolio weights matrix (x). In this case, the portfolio is the minimum variance portfolio, meaning that the portfolio weights matrix is represented by 'm'. 
+
+```{r variance_minimum_variance_PTFOLIO}
+
+variance_minimum_variance <-
+  
+  (
+    #this formulation finds the variance: the dot product (%*%) of the transposed portfolio weights matrix with the dot product of the covariance matrix and the portfolio weights matrix
+    t(m) %*% (sigma %*% m)
+    
+    )
+
+#printing the variance
+paste0("The variance of the minimum variance portfolio is ", variance_minimum_variance)
+
+```
+
+> 15.5 Find another efficient portfolio. Namely, the efficient portfolio that gives a return equal to the expected return of MSFT. Note, that your minimization problem now becomes: minimise variance subject to the portfolio weights summing to 1 and expected return is equal to the expected return of MSFT. Derive the solution as above in terms of portfolio weights and calculate them in your code. In addition, calculate the expected return and the variance of efficient portfolio x as well as its covariance with the global minimum portfolio.
+
+We adopt the same approach as before, with a slightly different A and b matrices which includes the second condition via an additional row (and, for A, column) containing the expected (mean) returns for each stock. Thus, 
+
+$$A_mz_m = b$$ with the solution $$z_m = A^{-1}_mb$$, where $$A = \begin{pmatrix}
+  2\sigma^{2}_{MSFT} & 2\sigma_{MSFT,GE} & 2\sigma_{MSFT,JPM} & \mu_{MSFT} & 1 \\
+  2\sigma_{GE,MSFT} & 2\sigma^{2}_{GE} & 2\sigma_{GE,JPM} & \mu_{MSFT}& 1 \\
+  2\sigma_{JPM,MSFT} & 2\sigma_{JPM,GE} & 2\sigma^{2}_{JPM} & \mu_{MSFT} & 1 \\
+  \mu_{MSFT} & \mu_{MSFT} & \mu_{MSFT} & 0 & 0 \\
+  1 & 1 & 1 & 0 & 0
+ \end{pmatrix}$$
+ 
+ and $$b = \begin{pmatrix}
+  0 \\
+  0 \\
+  0 \\
+  \mu_{MSFT}\\
+  1
+ \end{pmatrix}$$
+
+## Finding the Efficient Portfolio 
+
+ **Defining Matrix A**
+ 
+```{r define_A_new_condition}
+
+#multiplying the sigma (covariance matrix) by 2 as the previous equation shows
+A_new <- 2*sigma
+
+#adding the two conditions in the column direction
+A_new <- cbind(A_new, mu, c(1,1,1))
+
+#adding the new (mu) condition in the row direction
+A_new <- rbind(A_new, c(t(mu), 0, 0))
+
+#adding the first condition in the row direction
+A_new <- rbind(A_new, c(1,1,1,0,0))
+
+#printing the matrix to ensure it is correct (which we find it is)
+A_new
+
+```
+
+ **Defining Matrix b**
+
+```{r define_b_new_condition}
+
+#b, a single column matrix, is defined much more simply, using the matrix function
+
+b_new <- matrix(
+  
+  c(
+    
+    0,
+    0,
+    0,
+    
+    #since only the expected return of MSFT is required, I use mu[1] representing the first row
+    mu[1],
+    
+    1
+    
+    ), 
+  
+  ncol=1)
+
+#printing the matrix to ensure it is correct (which we find it is)
+b_new
+
+```
+
+**Solving for Matrix z**
+
+```{r solve_for_z_new_condition}
+
+#again we use the function 'solve()' to generate the inverse of the matrix
+
+#thus, we calculate z by taking dot product of the inverse of the new matrix A (including the new expected returns condition) with the new matrix b (including the expected returns condition)
+z_new <- solve(A_new) %*% b_new
+
+#we check that z has the expected form (portfolio weights for each underlying asset, and an unlabelled lambda term), which it does
+z_new
+
+```
 
 
+```{r extracting_weights_new_condition}
+
+#I extract the first three rows, and take only the first (names) column
+x <- z_new[1:3,1]
+
+#this value now contains the portfolio weights for the minimum variance portfolio
+x
+
+```
+
+## Calculating the Variance and Expected Return of the Efficient Portfolio
+
+**Structuring m as a Portfolio Weights Matrix**
+
+```{r portfolio_weights_matrix_new_condition}
+
+x <- matrix(x, ncol=1)
+
+```
+
+**Expected Return of the Minimum Variance Portfolio**
+
+```{r return_efficient_PTFOLIO}
+
+return_efficient <- 
+  
+  #this simple formulation finds the dot product (%*%) of the transposed m (efficient portfolio weights) matrix with the expected returns matrix, mu
+  t(x) %*% mu
+
+#printing the expected return
+paste0("The expected return of the efficient portfolio is ", return_efficient)
+
+```
+
+**Variance of the Efficient Portfolio**
+
+```{r variance_efficient_PTFOLIO}
+
+variance_efficient <-
+  
+  (
+    #this formulation finds the variance: the dot product (%*%) of the transposed portfolio weights matrix with the dot product of the covariance matrix and the portfolio weights matrix
+    t(x) %*% (sigma %*% x)
+    
+    )
+
+#printing the variance
+paste0("The variance of the efficient portfolio is ", variance_efficient)
+
+```
+
+**The Covariance Between the Minimum Variance Portfolio and the Efficient Portfolio**
+
+The formula provided indicates that the covariance of the portfolio is obtained by the dot product of: (i) the first portfolio weights matrix (m or x) and (ii) the dot product of (ii.i) sigma, the covariance matrix, and (ii.ii) the second portfolio weights matrix (m or x).
 
 
+```{r covariance_portfolios}
+
+#calculating the covariance between the two portfolios (an equal weights and unequal weights portfolio consisting of the same underlying assets: MSFT, GE, JPM)
+PTFOLIO_new_covariance <- t(m) %*% (sigma %*% x)
+
+#printing the covariance between the two portfolios
+paste0("The covariance between the efficient portfolio and the global minimum variance portfolio is ", PTFOLIO_new_covariance)
+
+```
+
+> 15.6 Plot the entire efficient frontier for the three risky assets.
+
+In order to plot the efficient frontier, we have to obtain the volatility (standard deviation) and expected return, given a certain inputted: 
+
+i) return (the equivalent of the second condition in the efficient portfolio, which required returns to equal MSFT returns)
+ii) matrix of expected returns (mu)
+iii) covariance matrix (sigma)
+
+To achieve this, we define a function capable of repeating the steps taken in 15.6 - taking the "return" e.g. MSFT expected return as and input and outputting both the volatility and expected return of the corresponding efficient portfolio.
+
+```{r calculating_the_frontier}
+
+frontier_calculator <- function(return, mu, sigma){
+  
+  #we define matrix A
+  A <- 2*sigma
+  A <- cbind(A, mu, c(1,1,1))
+  A <- rbind(A, c(t(mu), 0, 0))
+  A <- rbind(A, c(1,1,1,0,0))
+  
+  #we define matrix b
+  b = matrix(c(0, 0, 0, return, 1), ncol=1)
+  
+  #we solve for z
+  z = solve(A) %*% b
+  
+  #we extract the portfolio weights
+  x = z[1:3,1]
+  
+  #we return the expected return and volatility (standard deviation) of the portfolio
+  return(
+    
+    c(
+      
+      #expected return
+      t(x) %*% mu, 
+      
+      #standard deviation (volatility)
+      sqrt(t(x) %*% sigma %*% x)
+      
+      )
+  
+    )
+  
+}
+
+```
+
+I now apply the function by specifying a range of return values to use as inputs:
+
+```{r preparing_the_frontier}
+
+#setting the range and step of inputted 'returns' values
+returns  <- seq(
+  
+  from = 0, 
+  to = 0.003, 
+  by=0.00005)
+
+#creating empty vectors to be populated with expected return and volatility values
+volatility = rep(NA, length(returns))
+expected_return = rep(NA, length(returns))
+
+#applying the 'frontier_calculator' function by looping it over all the values in the 'returns' list to obtain the volatilities and expected returns required for the efficient frontier plot
+
+for (i in 1:length(returns)){
+  
+  #we run the function using our previously calculated mu and sigma matrices (see Q15.2), and the 'returns' inputs
+  calculations <- frontier_calculator(returns[i], mu, sigma)
+  
+  #obtaining the first column of the resulting dataframe as the expected returns
+  expected_return[i] <- calculations[1]
+  
+  #obtaining the second column of the resulting dataframe as the volatility
+  volatility[i] <- calculations[2]
+  
+}
+
+frontier_output <- cbind(expected_return,volatility)
+
+```
+
+```{r plotting_the_frontier, fig.height=5, fig.width=5}
+
+# create and store the plot:
+frontier1 <- ggplot(data=NULL, aes(y=expected_return, x=volatility)) + 
+  geom_point(color="red",size=0.5) +
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(
+    title = "The Efficient Frontier", subtitle="The Efficient Frontier for 3 Risky Assets (MSFT, GE, and JPM) From 02/01/1990 to 31/12/2002",
+    x = "Volatility (Standard Deviation)",
+    y = "Expected Return"
+  ) 
+
+# display the plot:
+frontier1
+
+```
+
+> 15.7 Now, rerun your code with sample moments for the three stocks MSFT, GE, and JPM for the sample period between 2/1/2003 and 31/12/2014.
+
+## Specifying the New Date Range Data
+
+```{r}
+
+#creating a new dataframe from HPR_daily which contains only the selected stocks, filtered for the stated date range
+stocks_HPR2 <- HPR_daily %>% 
+  select (DATE, MSFT, GE, JPM) %>%
+  filter (DATE >= as.Date("2003-01-02") & DATE <= as.Date("2014-12-31"))
+
+```
+
+## Defining the Returns/Expected Returns Matrix
+
+```{r}
+
+mu2 <- matrix(
+  
+  c(
+    #specifying the 3 means to be taken from the date-filtered, wide-format stocks_HPR data frame
+    mean(stocks_HPR2$MSFT), 
+    mean(stocks_HPR2$GE), 
+    mean(stocks_HPR2$JPM)
+    
+    ), 
+  
+  #specifying the number of columns and number of rows in the matrix object
+  ncol=1, nrow=3)
+
+#printing the returns/expected returns matrix, mu
+mu2
+
+```
+
+## Defining the Covariance Matrix
+
+```{r}
+
+sigma2 <- round(var(
+  
+  stocks_HPR2 %>% 
+    select(-DATE)
+  
+  ),6)
+
+```
+
+## Obtaining the Global Minimum Variance Portfolio
+
+```{r}
+
+A <- 2*sigma2
+A <- cbind(A, c(1,1,1))
+A <- rbind(A, c(1,1,1,0))
+
+A
+
+```
+
+```{r}
+
+b <- matrix(c(0,0,0,1), ncol=1)
+b
+
+```
+
+```{r}
+
+z <- solve(A) %*% b
+z
+
+```
+
+```{r}
+
+m <- z[1:3,1]
+m
+
+```
+
+```{r}
+
+m <- matrix(m, ncol=1)
+
+```
+
+## Obtaining the Efficient Portfolio in Relation to MSFT
+
+```{r}
+
+A_new <- 2*sigma2
+A_new <- cbind(A_new, mu2, c(1,1,1))
+A_new <- rbind(A_new, c(t(mu2), 0, 0))
+A_new <- rbind(A_new, c(1,1,1,0,0))
+A_new
+
+```
+
+```{r}
+
+b_new <- matrix(c(0,0,0,mu2[1], 1), ncol=1)
+b_new
+
+```
+
+```{r}
+
+z_new <- solve(A_new) %*% b_new
+z_new
+
+```
+
+```{r}
+
+x <- z_new[1:3,1]
+x
+
+```
+
+```{r}
+
+x <- matrix(x, ncol=1)
+
+```
+
+## Calculating and Plotting the Efficient Frontier
+
+```{r}
+
+frontier_calculator2 <- function(return, mu2, sigma2){
+  
+  #we define matrix A
+  A <- 2*sigma2
+  A <- cbind(A, mu2, c(1,1,1))
+  A <- rbind(A, c(t(mu2), 0, 0))
+  A <- rbind(A, c(1,1,1,0,0))
+  
+  #we define matrix b
+  b = matrix(c(0, 0, 0, return, 1), ncol=1)
+  
+  #we solve for z
+  z = solve(A) %*% b
+  
+  #we extract the portfolio weights
+  x = z[1:3,1]
+  
+  #we return the expected return and volatility (standard deviation) of the portfolio
+  return(
+    
+    c(
+      
+      #expected return
+      t(x) %*% mu2, 
+      
+      #standard deviation (volatility)
+      sqrt(t(x) %*% sigma2 %*% x)
+      
+      )
+  
+    )
+  
+}
+
+```
+
+```{r}
+
+#setting the range and step of inputted 'returns' values
+returns2  <- seq(
+  
+  from = 0, 
+  to = 0.003, 
+  by=0.00005)
+
+#creating empty vectors to be populated with expected return and volatility values
+volatility2 = rep(NA, length(returns2))
+expected_return2 = rep(NA, length(returns2))
+
+#applying the 'frontier_calculator' function by looping it over all the values in the 'returns' list to obtain the volatilities and expected returns required for the efficient frontier plot
+
+for (i in 1:length(returns2)){
+  
+  #we run the function using our previously calculated mu and sigma matrices (see Q15.2), and the 'returns' inputs
+  calculations2 <- frontier_calculator2(returns2[i], mu2, sigma2)
+  
+  #obtaining the first column of the resulting dataframe as the expected returns
+  expected_return2[i] <- calculations2[1]
+  
+  #obtaining the second column of the resulting dataframe as the volatility
+  volatility2[i] <- calculations2[2]
+  
+}
+
+frontier_output2 <- cbind(expected_return2,volatility2)
+
+```
+
+```{r, fig.height=5, fig.width=5}
+
+# create and store the plot:
+frontier2 <- ggplot(data=NULL, aes(y=expected_return2, x=volatility2)) + 
+  geom_point(color="red",size=0.5) +
+  theme_fivethirtyeight() + theme(axis.title=element_text())+
+  labs(
+    title = "The Efficient Frontier", subtitle="The Efficient Frontier for 3 Risky Assets (MSFT, GE, and JPM) From 02/01/2003 to 31/12/2014",
+    x = "Volatility (Standard Deviation)",
+    y = "Expected Return"
+  ) 
+
+# display the plot:
+frontier2
+
+```
+
+> 15.8 Finally, compare your results for the three assets across the two sample periods. Comment on potential problems that might arise when you based investment decisions on your analysis. Also discuss potential solutions to the problems mentioned.
+
+We find that the 
+
+## (Mean) Return Estimates
+
+```{r}
+mu
+mu2
+
+```
+
+## Covariance
+
+```{r}
+
+sigma
+sigma2
+
+```
+
+## Efficient Frontier
+
+```{r, fig.height=5, fig.width=10}
+
+frontier1 + frontier2
 
 
-
-
-
-
-
-
+```
 
 
 
