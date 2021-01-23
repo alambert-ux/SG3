@@ -5,40 +5,11 @@ author: "Study Group 3: Alberto Lambert, Sammy Chen, Shuhan Li, Michael Gritzbac
 output: html_document
 ---
 
-------------------------
-
-# OUR STRATEGY
-
-## DEADLINE
-
-IDEAL DEADLINE = 21:00 SUNDAY 17TH JANUARY 2021
-INTERNAL DEADLINE = 21:00 WEDNESDAY 20TH JANUARY 2021
-OFFICIAL DEADLINE = 21:00 FRIDAY, 22ND JANUARY 2021
-
-## TEAMS
-
-### TEAM A: Q1-Q12 - Sammy & Alberto
-### TEAM B: Q13-Q15 - Michael, Mehek & Shuhan
-
-### (SUNDAY 17TH JANUARY)
-
-TEAM A: ASSISTANCE
-TEAM B: Q13-Q15 FINALISATION
-
-### (MONDAY 18TH JANUARY)
-
-TEAM A: ASSISTANCE
-TEAM B: Q13-Q15 FINALISATION
-
--------------------------
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Importing Packages
-
-```{r load_libraries}
+```{r load_libraries, include=FALSE}
 library(readxl)
 library(tidyverse)
 library(lubridate)
@@ -209,7 +180,7 @@ GE_monthly <-PS1_Monthly %>%
 ```
 
 **Plotting the Index for MSFT**
-```{r plotting_monthly_total_return_index_MSFT, fig.height=7, fig.width=7}
+```{r plotting_monthly_total_return_index_MSFT, fig.height=7, fig.width=12}
 
 #for MSFT both with and without dividends
 ggplot()+
@@ -225,7 +196,7 @@ ggplot()+
 ```
 
 **Plotting the Index for GE**
-```{r plotting_monthly_total_return_index_GE, fig.height=7, fig.width=7}
+```{r plotting_monthly_total_return_index_GE, fig.height=7, fig.width=12}
 
 #for GE both with and without dividends
 ggplot()+
@@ -250,7 +221,7 @@ Thus, arguably dividends have a greater effect on total returns across the full 
 
 > 4.  Normalize the price of GE using the adjusted number of shares. Plot the adjusted price against the unadjusted prices. Discuss.
 
-```{r normalizing_monthly_GE_price, fig.height=7, fig.width=7}
+```{r normalizing_monthly_GE_price, fig.height=7, fig.width=12}
 
 #normalizing the price by adjusting for number of shares
 GE_monthly <- GE_monthly %>% 
@@ -315,7 +286,7 @@ These distributions demonstrate how the logged returns of key assets such as MSF
 
 Aside from kurtosis and skew (which is represented by the logged mean return being consistently smaller than the normal mean return), the variance of the normal returns and logged returns are similar: the logged return variance being only marginally smaller than the normal return variance, again due to mitgation of the effects of outliers at the positive extreme. 
 
-```{r MSFT_monthly_returns_plot, fig.height=7, fig.width=7}
+```{r MSFT_monthly_returns_plot, fig.height=7, fig.width=12}
 
 #(further) adding the total returns LRET series for MSFT
 MSFT_monthly <-MSFT_monthly %>% 
@@ -541,7 +512,7 @@ distribution_log_daily <- HPR_daily_long %>%
 ```
 
 **Comparing the Returns Distributions**
-```{r logged_returns_comparison, fig.height=7, fig.width=15}
+```{r logged_returns_comparison, warning=FALSE, fig.height=10, fig.width=20}
 
 distribution_log_monthly+distribution_log_daily
 
@@ -550,7 +521,7 @@ distribution_log_monthly+distribution_log_daily
 For a better comparison, we compare the monthly and daily logged returns of MSFT::
 
 **MSFT | Log Returns Comparison**
-```{r MSFT_log_returns_distribution, fig.height=10, fig.width=7}
+```{r MSFT_log_returns_distribution, fig.height=10, fig.width=12}
 
 #specifying GE monthly log distribution
 MSFT_log_dist_monthly <- PS1_Monthly %>% 
@@ -652,7 +623,7 @@ However, we cannot rely fully on these covariances to draw inferences regarding 
 ## Monthly (not daily) asset data is used throughout this question, and the ACF is plotted for each of the 3 chosen stocks (MSFT, GE, JPM)
 
 ### For MSFT
-```{r MSFT_ACF, fig.height=4, fig.width=4}
+```{r MSFT_ACF, fig.height=5, fig.width=5}
 
 #preparing the data for ACF
 MSFT_monthly_ACF <- PS1_Monthly %>% 
@@ -689,7 +660,7 @@ plot(absolute_MSFT, main = "ACF of MSFT Monthly Absolute Returns")
 ```
 
 ### For GE
-```{r GE_ACF, fig.height=4, fig.width=4}
+```{r GE_ACF, fig.height=5, fig.width=5}
 
 #preparing the data for ACF
 GE_monthly_ACF <- PS1_Monthly %>% 
@@ -727,7 +698,7 @@ plot(absolute_GE, main = "ACF of GE Monthly Absolute Returns")
 
 ### For JPM
 
-```{r JPM_ACF, fig.height=4, fig.width=4}
+```{r JPM_ACF, fig.height=5, fig.width=5}
 
 #preparing the data for ACF
 JPM_monthly_ACF <- PS1_Monthly %>% 
@@ -788,6 +759,8 @@ JPM_weight = 0.3
 
 ```
 
+# QUESTION 14
+
 > 14.  Calculate the portfolio returns and use them to calculate the evolution of a $1 investment in the portfolio over the sample period. Plot the result against the evolution of a $1 investment in each of the three stocks. Discuss the result.
 
 Since 'stocks' contains all the required data, we must now manipulate to extract the required total returns.
@@ -810,7 +783,7 @@ PTFOLIO <- portfolio_stocks %>%
   
 ```
 
-```{r plotting_portfolio_returns, fig.height=7, fig.height=7}
+```{r plotting_portfolio_returns, fig.height=7, fig.width=15}
 
 #transforming the dataset from wide to long format again and plotting the results
 PTFOLIO %>% 
@@ -820,7 +793,7 @@ PTFOLIO %>%
   ggplot(aes(x=DATE,y=TR_RET,color=Asset))+
   geom_line()+
   theme_fivethirtyeight() + theme(axis.title=element_text())+
-  labs(title="Portfolio Returns Against Stock Returns", subtitle="The Evolution of a $1 Investment in a Weighted Portfolio of MSFT (0.4), GE (0.3) and JPM (0.3) Against the Underlying Stocks",x="Date",y="Total Return")+
+  labs(title="Portfolio Returns Against Stock Returns", subtitle="The Evolution of a $1 Investment in a Weighted Portfolio of MSFT (0.4), GE (0.3) and JPM (0.3) \nAgainst the Underlying Stocks",x="Date",y="Total Return")+
   scale_x_date(date_breaks="2 years",date_labels="%Y")+
   scale_y_continuous(labels=scales::dollar_format(), breaks=seq(0,120,by=10), limits=c(0,120))+
   theme(plot.subtitle = element_markdown(), legend.position="top")
@@ -1007,7 +980,7 @@ y <- matrix(
 **Return of an Un-Equal Weight Portfolio**
 I apply the same formula as above. However, in this case, the portfolio is the un-equal weights portfolio, meaning that the portfolio weights matrix is represented by 'y'. 
 
-```{r return_equal_weight_PTFOLIO}
+```{r return_unequal_weight_PTFOLIO}
 
 return_unequal_weight <- 
   
@@ -1021,7 +994,7 @@ return_unequal_weight
 **Risk of an Un-Equal Weight Portfolio**
 I apply the same formula as above. However, in this case, the portfolio is the un-equal weights portfolio, meaning that the portfolio weights matrix is represented by 'y'. 
 
-```{r risk_equal_weight_PTFOLIO}
+```{r risk_unequal_weight_PTFOLIO}
 
 risk_unequal_weight <- 
   
@@ -1091,7 +1064,7 @@ The question provides us with the solution for the global minimum variance portf
  \end{pmatrix}$$
  
  **Defining Matrix A**
- Thus, we focus on defining $$A$$, such that we can obtain the dot product of the inverse of this matrix with matrix $b$ in order to obtain the solution $z$. 
+ Thus, we focus on defining $A$, such that we can obtain the dot product of the inverse of this matrix with matrix $b$ in order to obtain the solution $z$. 
 
 ```{r define_A}
 
@@ -1110,7 +1083,7 @@ A
 ```
 
 **Defining Matrix b**
-We now define $$b$$, which is the final matrix we require to solve for $$z$$
+We now define $b$, which is the final matrix we require to solve for $z$.
 
 ```{r define_b}
 
@@ -1148,7 +1121,7 @@ z
 
 ```
 
-As stated in the assignment, the first three elements of $$z$$ are the portfolio weights $$m$$ for the global minimum variance portfolio:
+As stated in the assignment, the first three elements of $z$ are the portfolio weights $m$ for the global minimum variance portfolio:
 
 $$z = \begin{pmatrix}
   m_{MSFT} \\
@@ -1157,7 +1130,7 @@ $$z = \begin{pmatrix}
   \lambda
  \end{pmatrix}$$
 
-I therefore extract and transpose these weights, m, from the $$z$$ matrix, discarding the $$\lambda$$ term. 
+I therefore extract and transpose these weights, m, from the $z$ matrix, discarding the $\lambda$ term. 
 
 ```{r extracting_weights}
 
@@ -1320,7 +1293,7 @@ x <- matrix(x, ncol=1)
 
 ```
 
-**Expected Return of the Minimum Variance Portfolio**
+**Expected Return of the Efficient Portfolio**
 
 ```{r return_efficient_PTFOLIO}
 
@@ -1355,8 +1328,7 @@ paste0("The variance of the efficient portfolio is ", variance_efficient)
 
 The formula provided indicates that the covariance of the portfolio is obtained by the dot product of: (i) the first portfolio weights matrix (m or x) and (ii) the dot product of (ii.i) sigma, the covariance matrix, and (ii.ii) the second portfolio weights matrix (m or x).
 
-
-```{r covariance_portfolios}
+```{r new_covariance_portfolios}
 
 #calculating the covariance between the two portfolios (an equal weights and unequal weights portfolio consisting of the same underlying assets: MSFT, GE, JPM)
 PTFOLIO_new_covariance <- t(m) %*% (sigma %*% x)
@@ -1448,14 +1420,14 @@ frontier_output <- cbind(expected_return,volatility)
 
 ```
 
-```{r plotting_the_frontier, fig.height=5, fig.width=5}
+```{r plotting_the_frontier, fig.height=10, fig.width=10}
 
 # create and store the plot:
 frontier1 <- ggplot(data=NULL, aes(y=expected_return, x=volatility)) + 
   geom_point(color="red",size=0.5) +
   theme_fivethirtyeight() + theme(axis.title=element_text())+
   labs(
-    title = "The Efficient Frontier", subtitle="The Efficient Frontier for 3 Risky Assets (MSFT, GE, and JPM) From 02/01/1990 to 31/12/2002",
+    title = "The Efficient Frontier", subtitle="From 02/01/1990 to 31/12/2002",
     x = "Volatility (Standard Deviation)",
     y = "Expected Return"
   ) 
@@ -1552,6 +1524,29 @@ m <- matrix(m, ncol=1)
 
 ```
 
+```{r}
+
+return_minimum_variance <- 
+  
+  t(m) %*% mu2
+
+paste0("The expected return of the minimum variance portfolio is ", return_minimum_variance)
+
+```
+
+```{r}
+
+variance_minimum_variance <-
+  
+  (
+     t(m) %*% (sigma2 %*% m)
+    
+    )
+
+paste0("The variance of the minimum variance portfolio is ", variance_minimum_variance)
+
+```
+
 ## Obtaining the Efficient Portfolio in Relation to MSFT
 
 ```{r}
@@ -1588,6 +1583,37 @@ x
 ```{r}
 
 x <- matrix(x, ncol=1)
+
+```
+
+```{r}
+
+return_efficient <- 
+  
+  t(x) %*% mu2
+
+paste0("The expected return of the efficient portfolio is ", return_efficient)
+
+```
+
+```{r}
+
+variance_efficient <-
+  
+  (
+        t(x) %*% (sigma2 %*% x)
+    
+    )
+
+paste0("The variance of the efficient portfolio is ", variance_efficient)
+
+```
+
+```{r}
+
+PTFOLIO_new_covariance <- t(m) %*% (sigma2 %*% x)
+
+paste0("The covariance between the efficient portfolio and the global minimum variance portfolio is ", PTFOLIO_new_covariance)
 
 ```
 
@@ -1663,14 +1689,14 @@ frontier_output2 <- cbind(expected_return2,volatility2)
 
 ```
 
-```{r, fig.height=5, fig.width=5}
+```{r, fig.height=10, fig.width=10}
 
 # create and store the plot:
 frontier2 <- ggplot(data=NULL, aes(y=expected_return2, x=volatility2)) + 
   geom_point(color="red",size=0.5) +
   theme_fivethirtyeight() + theme(axis.title=element_text())+
   labs(
-    title = "The Efficient Frontier", subtitle="The Efficient Frontier for 3 Risky Assets (MSFT, GE, and JPM) From 02/01/2003 to 31/12/2014",
+    title = "The Efficient Frontier", subtitle="From 02/01/2003 to 31/12/2014",
     x = "Volatility (Standard Deviation)",
     y = "Expected Return"
   ) 
@@ -1682,33 +1708,44 @@ frontier2
 
 > 15.8 Finally, compare your results for the three assets across the two sample periods. Comment on potential problems that might arise when you based investment decisions on your analysis. Also discuss potential solutions to the problems mentioned.
 
-We find that the 
 
-## (Mean) Return Estimates
+## Comparing the mean and covariance returns for MSFT, GE, and JPM across the two sample periods
 
-```{r}
-mu
-mu2
+*Mean Returns*
 
-```
+In terms of returns, we find that the while the average return for both MSFT and GE is greater in the earlier (2/1/1990 - 31/12/2002) than in the later (2/1/2003 and 31/12/2014) period, for JPM the average return is almost identical across the two periods - and only marginally higher in the second. For the mean return, MSFT ranked the highest (at 0.00093) in the first sample period while JPM reported the highest returns (at 0.00076), in the second. Though both MSFT and GE reported lower average returns during the second period (with MSFT experiencing the most substantial decline in returns), JPM actually reported a minimal increase of 0.00004 in its returns.
 
-## Covariance
+*Covariances*
 
-```{r}
+In terms of volatility, the covariance estimates also differ considerably between these two periods, with the covariance between MSFT returns and both GE and JPM returns decreasing moderately, and the covariance between GE and JPM increasing substantially, from the first to the second period.
 
-sigma
-sigma2
+*Efficient Frontiers*
 
-```
+The rightward shift in the efficient frontier from the first to the second sample period indicates that the risk-return relationship (the Sharpe ratio) has worsened over time. Indeed, in the latter 2003-2014 period, an investor in the portfolio of these risky assets must take on more risk (greater returns volatility) for the same expected return, than an investor in the former 1990-2002 period. Equivalently, a similarly risk-averse investor in the second period would have to settle for a lower expected return than an investor holding the portfolio in the first period.
 
-## Efficient Frontier
+These notable differences, in (mean) expected return and the covariance of the returns of the 3 assets in the portfolio, between the periods mean that while we would expect roughly equivalent efficient frontiers between the two periods (due to random variation cancelling over full-period means), we instead find a considerably lower Sharpe Ratio in the latter period. Such a substantial difference in the efficient frontier (and thus the global minimum variance portfolio) implies that we experience a relatively high level of estimation (measurement) error in our calculations.   
+   
 
-```{r, fig.height=5, fig.width=10}
+```{r, fig.height=10, fig.width=15}
 
-frontier1 + frontier2
+frontier1+frontier2
 
 
 ```
+  
+    
+
+## Potential Problems with Basing Investment Decisions on Our Analyses
+
+The kind of estimation error we observe is to be expected, since financial markets rarely fit the assumptions of mean-variance models and the efficient frontier is dynamic, so period-specific mean statistics are suboptimal for calculating and plotting the *true* efficient frontier at any given time (and therefore informing present-day, real-time investment decisions)
+
+Further, historical measurements of returns and volatility are used, which are subject to unknown changes at the time of calculation, and even if this model were applied, investors may not have free access to reliable data on returns and volatility to make sensible judgments.
+
+## Potential Solutions
+
+To investigate and address the problem of observed estimation error, we can perform robustness checks by re-calculating the efficient frontier for: a greater number of sub-periods and sub-periods of different lengths. It is also likely that, because we are evaluating a frontier of only 3 stocks, including more assets in the portfolio would likely "smooth" out observed aggregate differences between periods, allowing more granular estimation of the efficient frontier and its period-by-period evolution. 
+
+More practically, we can employ investment decision making processes based on more realistic real-time information: by developing allocations based on market conditions and incorporating the use of strategic diversification, we can manage risk while dynamically optimizing portfolio allocation on the basis of multiple factors in addition to simple risk and return. In particular, further factors to consider include the transaction and information costs faced by investors in real-time markets. 
 
 
-
+--END--
