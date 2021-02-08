@@ -1,0 +1,546 @@
+---
+title: "AM14 Assignment 4"
+subtitle:  "Big Data"
+author: "Study Group 3: Alberto Lambert, Sammy Chen, Shuhan Li, Michael Gritzbach, Mehek Khanna"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load_libraries, include=FALSE}
+
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(PerformanceAnalytics)
+library(ggthemes)
+library(ggtext)
+library(patchwork)
+library(janitor)
+library(naniar)
+library(dplyr)
+library(factoextra)
+library(kableExtra)
+
+```
+
+# QUESTION 1
+
+### Loading (Monthly) Portfolio Data
+
+> 1) Go to Kenneth French’s webpage https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data library.html and download the 10 portfolios formed on operating profitability, investment, dividend yield, and momentum and the 49 industry portfolios at the monthly frequency. In addition, also download the Fama/French 3 factors at the monthly frequency.
+
+```{r loading_data_portfolio}
+
+#Fama/French 3 Factors (Monthly Frequency)
+fama_french_3f <- read.csv(here::here("AM14 Group Assignment 4/Submitted/data/F-F_Research_Data_Factors.CSV"), skip = 3, nrows = 1134) %>% #importing the right rows
+  clean_names() %>% #cleaning the column names
+  rename(date = x) %>% #renaming the date column
+  mutate(date = ymd(parse_date_time(date, "%Y%m"))) %>% #converting the date into date format
+  mutate_at(vars(-date), as.numeric) %>% #converting all non-date variables to numeric type
+  replace_with_na_all(~.x %in% c(-99.99,-999)) #replacing -99.99 and -999 with NA (which is what they represent)
+
+operating <- read.csv(here::here("AM14 Group Assignment 4/Submitted/data/Portfolios_Formed_on_OP.CSV"), skip = 24, nrows = 690)  %>% #selecting the appropriate portion of the data
+  clean_names() %>% #cleaning the column names
+  select(1, 10:19) %>% #selecting only the relevant requested columns
+  rename(date = x) %>%  #naming the date variable to be consistent with existing dataframes
+  mutate(date = ymd(parse_date_time(date, "%Y%m"))) %>% #converting the date into date format
+  mutate_at(vars(-date), as.numeric) %>% #converting all non-date variables to numeric type
+  replace_with_na_all(~.x %in% c(-99.99,-999)) #replacing -99.99 and -999 with NA (which is what they represent)
+
+#repeating this data import procedure for all subsequent datasets
+
+investment <- read.csv(here::here("AM14 Group Assignment 4/Submitted/data/Portfolios_Formed_on_INV.CSV"), skip = 17, nrows = 690) %>%
+  clean_names() %>%
+  select(1, 10:19) %>%
+  rename(date = x) %>% 
+  mutate(date = ymd(parse_date_time(date, "%Y%m"))) %>%
+  mutate_at(vars(-date), as.numeric) %>% 
+  replace_with_na_all(~.x %in% c(-99.99,-999))
+
+dividend <- read.csv(here::here("AM14 Group Assignment 4/Submitted/data/Portfolios_Formed_on_D-P.CSV"), skip = 19, nrows = 1122) %>%
+  clean_names() %>%
+  select(1, 11:20) %>% #selecting only the relevant requested columns
+  rename(date = x)  %>% 
+  mutate(date = ymd(parse_date_time(date, "%Y%m"))) %>%
+  mutate_at(vars(-date), as.numeric) %>%  
+  replace_with_na_all(~.x %in% c(-99.99,-999))
+
+momentum <- read.csv(here::here("AM14 Group Assignment 4/Submitted/data/10_Portfolios_Prior_12_2.CSV"), skip = 10, nrows = 1128) %>%
+  clean_names() %>%
+  rename(date = x)  %>% 
+  mutate(date = ymd(parse_date_time(date, "%Y%m"))) %>%
+  mutate_at(vars(-date), as.numeric) %>% 
+  replace_with_na_all(~.x %in% c(-99.99,-999))
+
+industry_49 <- read.csv(here::here("AM14 Group Assignment 4/Submitted/data/49_Industry_Portfolios.CSV"), skip = 11, nrows = 1134) %>%
+  clean_names() %>%
+  rename(date = x)  %>% 
+  mutate(date = ymd(parse_date_time(date, "%Y%m"))) %>%
+  mutate_at(vars(-date), as.numeric) %>% 
+  replace_with_na_all(~.x %in% c(-99.99,-999))
+
+```
+
+# QUESTION 2
+
+### Principal Component Analysis on Monthly Excess Portfolio Returns
+
+> 2) Run a principal component on the combined excess returns of the 10 portfolios formed on operating profitability, investment, dividend yield, and momentum and the 49 industry portfolios (hint: use the prcomp command discussed in lecture 5). How many components/factors are needed to explain 95% of the return variation?
+
+#### Preparing the Dataset
+
+```{r combining_portfolio_data}
+
+#first, I join all the datasets by date and drop NAs
+portfolios <- left_join(operating, investment, by = "date") %>% 
+  left_join(dividend, by = "date") %>% 
+  left_join(momentum, by = "date") %>% 
+  left_join(industry_49, by = "date") %>% 
+  left_join(fama_french_3f, by="date") %>% 
+  drop_na()
+
+#I now subtract the risk-free rate from the returns of all the portfolios to generate the excess returns
+portfolios_excess_return <- portfolios[2:90] - portfolios$rf
+
+```
+
+#### Running the PCA
+
+```{r PCA_combined_excess_returns}
+
+combined_excess_return_PCA <- prcomp(~ ., 
+                                     data = portfolios_excess_return, 
+                                     scale = TRUE, 
+                                     center = TRUE,
+                                     na.action = na.omit)
+```
+
+#### Plotting the PCA Scree Plot
+
+```{r scree_combined_excess_returns, fig.height=10, fig.width=10}
+
+fviz_screeplot(combined_excess_return_PCA, addlabels = TRUE, title = "PCA of Combined Portfolio Excess Returns")
+
+```
+
+#### Identifying Principal Components Needed to Explain 95% of Variation
+
+Since we cannot identify how many PCs are necessary to explain 95% of variance from the scree plot alone, we use a loop, specified below. 
+
+```{r variance_condition}
+
+return_PCs <- as.data.frame(summary(combined_excess_return_PCA)$importance[3,])
+PC_95 <- 0
+
+for (i in 1:nrow(return_PCs)){
+  
+  if (summary(combined_excess_return_PCA)$importance[3,i] >= 0.95){
+    
+    PC_95 = i
+    
+    print(paste0(PC_95," Principal Components are needed to explain 95% of the return variation."))
+ 
+      break
+    
+    }
+}
+
+```
+
+#### Plotting the Proportion of Variance Explained
+
+```{r, fig.height = 10, fig.width = 10}
+
+#initializing the plot
+plot(summary(combined_excess_return_PCA)$importance[3,], xlab = "Principal Components", ylab = "Cumulative Proportion of Variance Explained")
+
+#pinpointing the PC at which explained variance reaches 95%
+abline(h=0.95, col = "red")
+abline(v=PC_95, col = "red")
+
+#adding a title
+title("Proportion of Variance Explained by PCs of Combined Portfolio Excess Returns")
+
+#formatting the axes
+axis(1, at=seq(0,90,5))
+
+```
+
+As we demonstrate above, the first 38 Principal Components (out of the 89 Principal Components created) are required to explain at least 95% of the excess return variation in the combined portfolios. As we would expect, PC1 explains the vast majority (69.9%) of variation, and each subsequent PC explains less and less variation. 
+
+# QUESTION 3
+
+### The Fama-French 3-Factor Model
+
+> 3) Run the following regressions for the 10 portfolios formed on operating profitability, investment, dividend yield, and momentum and the 49 industry portfolios and save all regression adjusted R2: ri,t − rf,t = αi + βi (rMKT,t − rf,t) + γirSMB,t + δirHML,t + ǫi,t What is the average and median regression adjusted R2? What is the standard deviation of adjusted R2?
+
+In order to run these regressions for all the portfolios efficiently, we define a function to run the regressions, as well as a function to extract the outputs. 
+
+#### A Function for Portfolio Regressions
+
+We specify a function designed to allow me to run the same regression for a sequence of portfolios.
+
+The function has the following features:
+
+**Inputs**
+- portfolios: names of the portfolio columns the regression will be performed on
+- data: the dataframe containing the portfolios and required factors (Fama-French 3 Factors)
+- equation: the regression formula required for the model
+
+**Output**
+- a list of the corresponding regression models for each portfolio
+
+```{r regression_function}
+
+regression_calculator <- function(portfolios, data, equation){
+  
+  #initializing a list which will contain the regression models
+  regressions <- list()
+    
+  #looping over each of the 25 portfolios
+  for (p in portfolios){
+    
+    #running the regression
+    x <- lm(formula(paste(p, equation)), data = data, na.action = na.omit)
+    
+    #saving the regression results in the specified list
+    regressions[[p]] <- x
+    
+  }
+  
+  #returning the list containing the regression models for all the portfolios
+  return(regressions)
+  
+}
+
+```
+
+#### A Function for Extracting Outputs
+
+Now we have specified a function for the regressions, we need to extract the relevant outputs.
+
+For this, we specify another function with the following features:
+
+**Inputs**
+- portfolios: names of the portfolio columns for which returns have to be calculated
+- regressions: a list containing the regressions run (using regression_calculator) for prediction
+
+**Output**
+- a tibble containing: i) portfolio names; ii) adjusted r squared values
+
+```{r estimation_function}
+
+estimation_calculator <- function(portfolios, regressions){
+  
+  #initializing a vector of r2
+  portfolio_adjusted_r_squared <- numeric(0)
+  
+  #looping over each of the portfolios
+  for (p in portfolios){
+    
+    portfolio_adjusted_r_squared[p] <- summary(regressions[[p]])[["adj.r.squared"]]
+    
+  }
+  
+  #returning a tibble containing: i) portfolio names; ii) adjusted r squared
+  return(tibble(portfolios, portfolio_adjusted_r_squared))
+  
+}
+
+```
+
+#### Calculating the Fama-French 3-Factor Model Regressions
+
+```{r running_FF_regressions}
+
+#obtaining the column names of the portfolios
+portfolio_names <- colnames(portfolios)[2:89]
+
+#computing the Fama-French regressions for each portfolio
+regressions_portfolios_FF <- regression_calculator(portfolio_names, portfolios, " - rf ~ mkt_rf + smb + hml")
+
+```
+
+#### Extracting the Fama-French 3-Factor Model Regression Outputs
+
+```{r extracting_FF_r2}
+
+#extracting the r2 from the regressions
+r2_portfolios_FF <- estimation_calculator(portfolio_names, regressions_portfolios_FF)
+
+```
+
+#### Calculating Summary Statistics from the Fama-French Regression Adjusted R-Squareds
+
+```{r r2_summaries_FF}
+
+#The Mean
+paste0("The mean Fama-French regression adjusted R2 for the portfolios is ",round(mean(r2_portfolios_FF$portfolio_adjusted_r_squared),digits=3),".")
+
+#The Median
+paste0("The median Fama-French regression adjusted R2 for the portfolios is ",round(median(r2_portfolios_FF$portfolio_adjusted_r_squared),digits=3),".")
+
+#The Standard Deviation
+paste0("The standard deviation of the Fama-French regression adjusted R2 for the portfolios is ",round(sd(r2_portfolios_FF$portfolio_adjusted_r_squared),digits=3),".")
+
+```
+
+# QUESTION 4
+
+### A PCA Model
+
+> 4.a) Now, run the following regressions for the 10 portfolios formed on operating profitability, investment, dividend yield, and momentum and the 49 industry portfolios and save all regression adjusted R2: ri,t − rf,t = αi + βirPC1,t + γirPC2,t + δirPC3,t + ǫi,t (hint: rPC1,t, rPC2,t, rPC3,t are simply the first three principal components. These components are returns themselves as the principal components of excess returns are simply linear combinations (i.e., portfolios) thereof, i.e., excess returns. Also note that you can call these first three principal components as follows in R: pca$x[,1], pca$x[,2], and pca$x[,3].)
+
+#### Adding the First 3 PCs to the Portfolio Data
+
+```{r PCA_portfolios}
+
+#isolating the first 3 PCAs
+PCs_3_returns <- as.data.frame(combined_excess_return_PCA$x[,1:3])
+colnames(PCs_3_returns) <- c("PC1","PC2","PC3")
+
+#joining them to the main portfolios data frame
+portfolios_PCA <- cbind(portfolios, PCs_3_returns)
+
+```
+
+#### Running the Portfolio PCA Regression Models
+
+```{r PCA_regression_model}
+
+#computing the PCA regressions for each portfolio
+regressions_portfolios_PCA <- regression_calculator(portfolio_names, portfolios_PCA, " - rf ~ PC1 + PC2 + PC3")
+
+#extracting the r2 from the regressions
+r2_portfolios_PCA <- estimation_calculator(portfolio_names, regressions_portfolios_PCA)
+
+```
+
+#### Extracting the Portfolio PCA Regression R2's
+
+> 4.b) What is the average and median regression adjusted R2? What is the standard deviation of adjusted R2?
+
+```{r r2_summaries_PCA}
+
+#The Mean
+paste0("The mean PCA regression adjusted R2 for the portfolios is ",round(mean(r2_portfolios_PCA$portfolio_adjusted_r_squared),digits=3),".")
+
+#The Median
+paste0("The median PCA regression adjusted R2 for the portfolios is ",round(median(r2_portfolios_PCA$portfolio_adjusted_r_squared),digits=3),".")
+
+#The Standard Deviation
+paste0("The standard deviation of the PCA regression adjusted R2 for the portfolios is ",round(sd(r2_portfolios_PCA$portfolio_adjusted_r_squared),digits=3),".")
+
+```
+
+> 4.c) Compare and discuss your results with the ones from above!
+
+In order to compare the results from the Fama-French 3-Factor Model Regressions and the Regression Model consisting of the first 3 PCAs, I create a comparison table. 
+
+```{r kable_comparison_table_PCA_FF, fig.width=5}
+
+#creating tibbles containing the results of the two regression methods
+FF_r2 <- c(mean(r2_portfolios_FF$portfolio_adjusted_r_squared),median(r2_portfolios_FF$portfolio_adjusted_r_squared),sd(r2_portfolios_FF$portfolio_adjusted_r_squared))
+
+PCA_r2 <- c(mean(r2_portfolios_PCA$portfolio_adjusted_r_squared),median(r2_portfolios_PCA$portfolio_adjusted_r_squared),sd(r2_portfolios_PCA$portfolio_adjusted_r_squared))
+
+#combining them into a single table
+model_comparison <- rbind(FF_r2,PCA_r2)
+colnames(model_comparison) <- c("Mean Adjusted R2", "Median Adjusted R2", "SD Adjusted R2")
+rownames(model_comparison) <- c("Fama-French 3-Factor Model", "First 3 PCAs Model")
+model_comparison <- round(model_comparison,3)
+
+#outputting the table in a neat format
+model_comparison %>%
+  kbl() %>%
+  kable_paper()
+
+```
+This table clearly shows that the mean and median adjusted R2 are both greater when the model is built using the first 3 Principal Components (which explain a total of 75.36% of variance in the portfolios' excess returns) than when built using the 3 Fama-French Factors (Market Risk, SMB and HML). 
+
+Further, the adjusted R2 of the PCA formulation has a lower SD, indicating that the model not only explains a higher proportion of variance in portfolio's excess returns than the Fama-French 3-Factor Model, but does so with more consistency. 
+
+In fact, we find that the linear model formed on the basis of the first 3 Principal Components can, on average (median) explain almost 80% of the variance in portfolio's excess returns, relative to just 76% for the Fama-French 3-Factor formulation. 
+
+The reason for this is intuitive: the first 3 Principal Components explain the majority of variance in excess portfolio returns, including that driven by the 3 Fama-French Factors. Thus, these factors are implicitly included in our PCA regression model, *in addition to* other latent factors which drive the returns of some or all portfolios, such as momentum. 
+
+The outperformance of the PCA formulation over the Fama-French formulation represents PCA's ability to capture non-explicit latent factors affecting excess portfolio returns. In doing so, the model based on PCAs generates better excess return predictions, demonstrated by its higher mean adjusted R2 and lower adjusted R2 standard deviation. 
+
+# QUESTION 5
+
+### The Problem with Principal Components
+
+> 5) What are the problems with factor models based on principal components?
+
+**Problem 1: Lack of Explainability**
+
+The most substantial issue with Principal Components (and thus factor models based on them) is that, since they represent linear combinations of *latent*, rather than *actual*, features affecting excess returns of the portfolios, they cannot be intuitively interpreted and explained. 
+
+Thus, even if a certain Principal Component is a statistically significant predictor in our model, we cannot interpret its coefficient in real terms. This means that, counter to their objective, PC-based factor models do not enable us to improve our understanding of the factors that affect portfolio returns, *or* improve our stock-selection decision making in light of them.
+
+This means that while we have demonstrated that our PC-based model has greater predictive power (higher adjusted R2) than the Fama-French formulation, it has almost no explanatory power, since the coefficients themselves do not directly represent any single economic factor. Fundamentally, while the nominal independent variables representing factors in a linear multi-factor model, such as the Fama-French 3-Factor model, allow us to answer the question of 'what economic forces cause prices to move?', PCs do not. 
+
+However, this is *not* to say that the PC model (or therefore, PCs), *cannot* be explained. Rather, by evaluating the PC loadings for each portfolio in light of known characteristics of the portfolio, we can gain a proxy understanding of the latent dimension each PC represents. Doing so for the first 3 PCs would then allow us to, in relatively general terms, explain the relative importance of these latent factors (factor exposures) in determining excess portfolio returns. 
+
+**Problem 2: High Computational Burden**
+
+A far more easily remedied, but still problematic, concern with factor models based on PCs is the computational burden associated with extracting the required PCs at scale. Indeed, though our portfolio timeseries are relatively narrow, meaning that our datasets are of a manageable size, the computational requirements of PC calculation increases exponentially as the size of the dataset (in this case, the number of portfolios and the duration of the timeseries) increases, meaning that PC-based models would become more difficult to run and refine. 
+
+# QUESTION 6
+
+### Loading (Daily) Yield Data
+
+> 6)  Go to CANVAS and download the data file PS4 Daily.xlsx. This file contains daily yield curve data for the United States between July 2 1981 and January 31 2020. In particular, you are given spot rates for 1-year, 2-years, ..., 20-years.
+
+```{r loading_data_yield, warning=FALSE}
+
+#loading in the daily yield data
+yield_daily <- read_excel(here::here("AM14 Group Assignment 4/Submitted/data/PS4_Daily.xlsx")) %>%
+  clean_names() #cleaning the column names
+
+#converting the variable types 
+yield_daily <- yield_daily[1] %>% #keeping the date column
+  cbind(sapply(X = yield_daily[,c(2:21)], FUN = as.numeric)) %>% #converting all non-date variables to numeric
+  mutate(date=ymd(date)) %>%  #ensuring the date variable is in date format
+  drop_na() #dropping any NA values
+
+```
+
+# QUESTION 7
+
+### Principal Component Analysis on Daily US Yields
+
+> 7.a) Use principal component analysis to examine the data. How many principal components are needed to explain the majority of the variation in the yields (hint: run prcomp on the yields and not on changes in yields)?
+
+#### Running the PCA
+
+```{r PCA_daily_yields}
+
+yield_series_PCA <- prcomp(~ .,
+                    data = yield_daily[-1], 
+                    scale = TRUE, 
+                    center = TRUE,
+                    na.action = na.omit)
+
+```
+
+#### Plotting the PCA Scree Plot
+
+```{r scree_daily_yields, fig.height=10, fig.width=10}
+
+fviz_screeplot(yield_series_PCA, addlabels = TRUE, title = "PCA of Daily US Yields")
+
+```
+
+#### Identifying Principal Components Needed to Explain the Majority of Variation
+
+Though we can easily see that only 1 PC (the first) is needed to explain the majority of the variation in yields, we validate this from the raw data using a loop, specified below. 
+
+```{r majority_variance_condition}
+
+yield_PCs <- as.data.frame(summary(yield_series_PCA)$importance[3,])
+PC_50 <- 0
+
+for (i in 1:nrow(yield_PCs)){
+  
+  if (summary(yield_series_PCA)$importance[3,i] >= 0.95){
+    
+    PC_50 = i
+    
+    print(paste0(PC_50," Principal Components are needed to explain the majority (>50%) of the return variation."))
+ 
+      break
+    
+    }
+}
+
+```
+
+As the scree plot and summary above states, since PC1 explains 98.5% of the variation in the US daily yields, only 1 PC is needed to explain the majority of variation in the yields. 
+
+#### Plotting Principal Components in Time Series
+
+> 7.b) Extract the first three components and plot them in a time series plot (again, you can extract them as discussed above).
+
+```{r PCA_yields}
+
+#isolating the first 3 PCAs
+PCs_3_yields <- as.data.frame(yield_series_PCA$x[,1:3])
+colnames(PCs_3_yields) <- c("PC1","PC2","PC3")
+
+#joining them to the date variable
+yields_PCA <- cbind(yield_daily[1], PCs_3_yields)
+
+#preparing the data frame for plotting as groups
+yields_PCA <- yields_PCA %>% 
+pivot_longer(2:4, names_to = "PC", values_to = "yield")
+
+```
+
+```{r PCA_time_series, fig.height=10, fig.width=15}
+
+yields_PCA %>% 
+  
+ggplot(aes(x = date, y = yield, color = PC))+
+  geom_line()+
+  theme_fivethirtyeight() + theme(axis.title=element_text(), legend.title=element_blank(), legend.position = "top")+
+  labs(title="Principal Component 1 Evidently Explains the Majority of Variation in US Daily Yields ",subtitle="Time Series of Daily US Yield Principal Component Scores, 1980-2021",x="Date",y="Principal Component Loading")+
+  scale_y_continuous(limits=c(-15,7),breaks=seq(-15,7,2))+
+  scale_x_date(breaks="2 years", date_labels="%Y")
+
+```
+
+This plot clearly shows that PC1 explains the vast majority of variation in US daily yields (98.52%), and that together, PCs 1-3 are certainly sufficient to explain *almost* all (99.98%) of the variation in the time series. 
+
+# QUESTION 8
+
+### Correlations Between Principal Components and US Yields of Differing Periods
+
+> 8.a) Calculate the correlation between the first component and the 3-year yield and the second component and the difference between the 10-year and the 1-year yield.
+
+#### PC1 and 3-Year Yield
+
+```{r yield_PC_correlation1}
+
+#PC1 and 3-Year Yield correlation
+round(cor(PCs_3_yields[,1],yield_daily$sveny03),3)
+
+```
+
+#### PC2 and the Difference Between the 10-Year and 1-Year Yield
+
+```{r yield_PC_correlation2}
+
+#PC1 and 3-Year Yield correlation
+round(cor(PCs_3_yields[,2],(yield_daily$sveny10-yield_daily$sveny01)),3)
+
+```
+
+#### The Economic Intuition
+
+> 8.b) What is the economic intuition for these components?
+
+We find that both correlations, between i) PC1 and the 3-Year yield (Correlation 1); and ii) between PC2 and the difference between the 10-Year and 1-Year yield (Correlation 2), are strongly negative. 
+
+Though Correlation 1 is more strongly negative than Correlation 2, both are extremely close to -1.00, representing an almost-perfect negative relationship. 
+
+**US Yields and Principal Components**
+
+On the basis of the observed Principal Component time series plot, and these strong negative correlations, we can derive a clear economic intuition for our first two principal components. 
+
+Specifically, PC1's negative correlation with the 3-Year yield 
+
+
+
+-------
+
+*The loadings of the first component lie approximately along a horizontal line - implying that changes in PC1 represent a parallel shift in the yield curve. Hence, PC1 is a good indicator of the base rate.*
+
+*Furthermore, changes in PC2 represent shifts in the slope (either steepening or flattening) of the yield curve, thus the high correlation with the difference between the 10-year and 1-year yield. This principal component also corresponds to the “yield curve inversion”, an important macroeconomic indicator. Worth mentioning is that PC3 is a proxy for the curvature effect (convexity) of the curve.*
+
+------
+
+--END--
